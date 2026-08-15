@@ -3,14 +3,9 @@
 #include <string.h>
 #include "rbtree.h"
 
-
-#include <stdlib.h>
-
 // inspired by
 // https://en.wikipedia.org/wiki/Red%E2%80%93black_tree
 // thank you kind stranger who made that article <3
-
-rbtree_t * root = NULL;
 
 static const rbtree_t * bstree_min(const rbtree_t *node) {
     while (node->nodes[0])
@@ -244,39 +239,3 @@ void rbtree_free(rbtree_t * tree) {
 
     kfree(tree);
 }
-
-/*
-void print_rbtree(const rbtree_t *tree) {
-    static int depth = -1;
-    depth++;
-    for (int i = 0; i < depth - 1; i++) {
-        kprintf("-");
-    }
-    if (depth)
-        kprintf("|");
-    kprintf(" %lx - %c\n", tree->val, tree->parent & 1 ? 'R':'B');
-
-    if (tree->nodes[0]) {
-        print_rbtree(tree->nodes[0]);
-    }
-    if (tree->nodes[1]) {
-        print_rbtree(tree->nodes[1]);
-    }
-    depth--;
-}
-
-void test_rbtree() {
-    kprintf("haii\n");
-
-    for (int i = 0; i < 1024; i++) {
-        rbtree_t * node = kalloc(sizeof(rbtree_t));
-        memset(node, 0, sizeof(rbtree_t));
-        node->val = rand();
-
-        rbtree_add(&root, node);
-    }
-    rbtree_remove(&root, rbtree_search_exact(root, 0xEF917D2));
-    print_rbtree(root);
-
-    while (1) {}
-}*/
