@@ -1470,10 +1470,16 @@ int sys_fchownat(int fd, const char *path, uid_t owner, gid_t group, int flag) {
         return -EACCES;
     }
 
-    if (owner != (uid_t)-1)
+    if (owner != (uid_t)-1) {
+        if (current_process->euid != 0 && new->uid != owner)
+            __atomic_and_fetch(&new->mode, ~S_ISUID, __ATOMIC_RELEASE);
         __atomic_store_n(&new->uid, owner, __ATOMIC_RELEASE);
-    if (group != (gid_t)-1)
+    }
+    if (group != (gid_t)-1) {
+        if (current_process->euid != 0 && new->gid != group)
+            __atomic_and_fetch(&new->mode, ~S_ISGID, __ATOMIC_RELEASE);
         __atomic_store_n(&new->gid, group, __ATOMIC_RELEASE);
+    }
 
     utimes_inode(new,
         (struct timespec){.tv_nsec = UTIME_OMIT},
