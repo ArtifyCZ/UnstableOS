@@ -1,13 +1,13 @@
 #include <stddef.h>
 #include <stdint.h>
-#include "../libc/src/include/stdio.h"
-#include "../libc/src/include/UnstableOS/devs.h"
+#include <stdio.h>
+#include <UnstableOS/devs.h>
 #include "include/kernel.h"
 #include "include/kernel_tty_io.h"
 #include "include/keyboard.h"
 #include "gfx.h"
-#include "../libc/src/include/string.h"
-#include "../libc/src/include/ctype.h"
+#include <string.h>
+#include <ctype.h>
 #include "include/kernel_console.h"
 
 #include "stdlib.h"
@@ -20,8 +20,6 @@ enum console_colors_palette console_default_color_bg = CONSOLE_COLOR_BLACK;
 
 char console_reversed_colors = 0;
 
-// if this, then delete chars until (and including) encountering normal character
-#define CHAR_CELL_RELATED (-1)
 struct character_cell {
     char c;
     enum console_colors_palette fg;
@@ -43,8 +41,6 @@ char console_cursor_blinking = 1;
 
 int console_cursor_x = 0;
 int console_cursor_y = 0;
-
-unsigned char console_tab_width = 8;
 
 #define MAX_ANSI_SEQUENCE 16
 
@@ -100,8 +96,6 @@ void console_cursor_hide() {
         }
 
         struct character_cell restored = console_buffer[console_cursor_y * console_buffer_w + console_cursor_x];
-        if (restored.c == CHAR_CELL_RELATED)
-            restored.c = ' ';
         gfx_blit_char(
            restored.c,
            console_cursor_x * console_font_width * FONT_MULTIPLIER,
@@ -200,10 +194,6 @@ static void console_set_char(int x, int y, char c) {
 
     if (isprint(c)) {
         gfx_blit_char(c, console_x*console_font_width*FONT_MULTIPLIER,
-                console_y*console_font_height*FONT_MULTIPLIER,
-        console_color_fg, console_color_bg, 1, FONT_MULTIPLIER);
-    } else if (c == CHAR_CELL_RELATED) {
-        gfx_blit_char(' ', console_x*console_font_width*FONT_MULTIPLIER,
                 console_y*console_font_height*FONT_MULTIPLIER,
         console_color_fg, console_color_bg, 1, FONT_MULTIPLIER);
     }
@@ -349,7 +339,7 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
                 if (console_x < 0) console_x = 0;
 
                 struct character_cell cc = {
-                    .c = CHAR_CELL_RELATED,
+                    .c = ' ',
                     .fg = console_color_fg,
                     .bg = console_color_bg
                 };
@@ -381,7 +371,7 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
                 if (console_x < 0) console_x = 0;
 
                 struct character_cell cc = {
-                    .c = CHAR_CELL_RELATED,
+                    .c = ' ',
                     .fg = console_color_fg,
                     .bg = console_color_bg
                 };
@@ -454,7 +444,7 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
     if (sscanf(ansi_sequence, "[%d%c", &id, &csi) != 2) goto ansi2params;
 
     struct character_cell cc = {
-        .c = CHAR_CELL_RELATED,
+        .c = ' ',
         .fg = console_color_fg,
         .bg = console_color_bg
     };
@@ -795,50 +785,20 @@ void console_write(const char * s, size_t len) {
         if (s[i] == '\b' /*|| s[i] == 0x7F*/) { // TODO: there may be a race condition with kernel/user printf
             if (!current_process || console_buffer == NULL) continue; // early boot, kprintf doesn't do \b anyway
 
-            spinlock_acquire(&console_buffer_lock);
-
             if (console_y >= console_buffer_h) console_y = console_buffer_h - 1;
             if (console_x >= console_buffer_w) console_x = console_buffer_w - 1;
 
             if (console_y < 0) console_y = 0;
             if (console_x < 0) console_x = 0;
-            if (console_x == 0 && console_y == 0) {
-                spinlock_release(&console_buffer_lock);
-                continue;
-            }
 
-            if (console_buffer[console_y * console_buffer_w + console_x - 1].c != CHAR_CELL_RELATED) {
-                if (console_x == 0) {
-                    if (console_y == 0) break;
-                    console_y -= 1;
-                    console_x = console_buffer_w - 1;
-                } else {
-                    console_x --;
-                }
-                console_buffer[console_y * console_buffer_w + console_x].c = 0;
-                spinlock_release(&console_buffer_lock);
-                gfx_blit_char(' ',
-                    console_x * console_font_width * FONT_MULTIPLIER,
-                    console_y * console_font_height * FONT_MULTIPLIER,
-                    0, 0, 1, FONT_MULTIPLIER);
-                continue;
+            if (console_x <= 0) {
+                if (console_y <= 0)
+                    continue;
+                console_y -= 1;
+                console_x = console_buffer_w - 1;
+            } else {
+                console_x --;
             }
-            while (console_buffer[console_y * console_buffer_w + console_x - 1].c == CHAR_CELL_RELATED) {
-                if (console_x == 0) {
-                    if (console_y == 0) break;
-                    console_y -= 1;
-                    console_x = console_buffer_w - 1;
-                } else {
-                    console_x --;
-                }
-                console_buffer[console_y * console_buffer_w + console_x].c = 0;
-                gfx_blit_char(' ',
-                    console_x * console_font_width * FONT_MULTIPLIER,
-                    console_y * console_font_height * FONT_MULTIPLIER,
-                    0, 0, 1, FONT_MULTIPLIER);
-            }
-            spinlock_release(&console_buffer_lock);
-            ///*if (s[i] == 0x7F)*/ vga_put_char(0, vga_color, vga_x, vga_y); // assuming cursor is in front of text
             continue;
         }
         if (s[i] == '\n' || s[i] == '\v') { // see the vt102 user guide for \v behavior
@@ -852,10 +812,8 @@ void console_write(const char * s, size_t len) {
             continue;
         }
         if (s[i] == '\t') {
-            int old_delta = console_tab_width - (console_x % console_tab_width);
-            for (int i = 0; i < old_delta; i++) {
-                console_write(&(char){CHAR_CELL_RELATED}, 1);
-            }
+            int old_delta = TTY_TAB_WIDTH - (console_x % TTY_TAB_WIDTH);
+            console_write("                ", old_delta);
             continue;
         }
         console_set_char(console_x, console_y, s[i]);

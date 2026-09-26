@@ -11,7 +11,7 @@
 - `fork()` (intentionally) doesn't copy any other stack than the calling thread's (which can lead to lost argc/argv/environ)
 - I don't think every kernel process operation is thread safe, too lazy to check
 - `fcntl()` advisory locks are internally converted from negative `l_len`s leading to `F_GETLK`/`F_OFD_GETLK` returning different structures
-
+- `PARMRK` termios option may lead to wrong \t deletion on `ICANON` (\xFF\x00<c> is treated as 3 characters)
 ### Known missing features
 ---
 - `scanf()` and `printf()` family of functions don't implement floats

@@ -88,7 +88,7 @@ int isxdigit(int c) {
         default: return 0;
         case '0' ... '9':
         case 'A' ... 'F':
-        case 'a' ... 'F':
+        case 'a' ... 'f':
             return 1;
     }
 }

@@ -239,18 +239,18 @@ long tty_ioctl(file_descriptor_t * file, unsigned long request, void * arg) {
                     return 0;
                 case TCIOFF:
                     tty_queue_putch(
+                        terminals[MINOR(dev)],
                         &terminals[MINOR(dev)]->oqueue,
-                        terminals[MINOR(dev)]->params.c_cc[VSTOP],
-                        0
+                        terminals[MINOR(dev)]->params.c_cc[VSTOP], 0
                     );
                     if (!terminals[MINOR(dev)]->output_stopped)
                         terminals[MINOR(dev)]->write(terminals[MINOR(dev)]);
                     return 0;
                 case TCION:
                     tty_queue_putch(
+                        terminals[MINOR(dev)],
                         &terminals[MINOR(dev)]->oqueue,
-                        terminals[MINOR(dev)]->params.c_cc[VSTART],
-                        0
+                        terminals[MINOR(dev)]->params.c_cc[VSTART], 0
                     );
                     if (!terminals[MINOR(dev)]->output_stopped)
                         terminals[MINOR(dev)]->write(terminals[MINOR(dev)]);
@@ -559,7 +559,7 @@ int tty_queue_getch(struct tty_queue * tq, struct timespec timeout) { // if 256,
     return out;
 }
 
-int tty_queue_putch(struct tty_queue * tq, char c, char onlret) {
+int tty_queue_putch(tty_t * tty, struct tty_queue * tq, char c, char onlret) {
     if (check_eintr())
         return 256;
 
@@ -584,17 +584,37 @@ int tty_queue_putch(struct tty_queue * tq, char c, char onlret) {
         #endif
     }
 
-    switch (c) {
-        case '\v':
-        case '\n':
-            if (!onlret) break;
-        case '\r':
-            tq->tty_column = 0;
-            break;
-        default:
-            tq->tty_column++;
-    }
+    if (EMPTY(tq))
+        tq->tty_start_column = tty->tty_column;
 
+    // we only care about the output representation of the column for tabs
+    if (tq == &tty->oqueue) {
+        size_t expected = tty->tty_column;
+        switch (c) {
+            case '\b':
+                if (expected)
+                    __atomic_compare_exchange_n(&tty->tty_column, &expected, tty->tty_column - 1,
+                        1, __ATOMIC_RELAXED, __ATOMIC_RELAXED);
+                break;
+            case '\t':
+                __atomic_add_fetch(
+                    &tty->tty_column,
+                    TTY_TAB_WIDTH - tty->tty_column % TTY_TAB_WIDTH,
+                    __ATOMIC_RELAXED
+                );
+                break;
+            case '\v':
+            case '\n':
+                __atomic_store(&tq->tty_start_column, &tty->tty_column, __ATOMIC_RELAXED);
+                if (!onlret) break;
+            case '\r':
+                __atomic_store_n(&tty->tty_column, 0, __ATOMIC_RELAXED);
+                __atomic_store_n(&tq->tty_start_column, 0, __ATOMIC_RELAXED);
+                break;
+            default:
+                __atomic_add_fetch(&tty->tty_column, 1, __ATOMIC_RELAXED);
+        }
+    }
     tq->buffer[tq->tail] = c;
     INC(tq);
     //thread_queue_unblock(&tq->read_queue); // commented out, because flushing is handled by the icannon flag
@@ -613,59 +633,95 @@ void tty_flush_input(tty_t * tty) { // flush for reading on new line or EOF in c
 
 static size_t tty_translate_line_outgoing(const char * s, size_t n, tty_t * tty);
 
+static size_t tty_replay_iqueue(tty_t * tty) {
+    struct tty_queue * queue = &tty->iqueue;
+
+    size_t off = queue->tty_start_column;
+    for (size_t i = queue->head; i != queue->tail; i = (i + 1) % MAX_CANON) {
+        switch (queue->buffer[i]) {
+            case '\n':
+                if ((tty->params.c_oflag & (OPOST | ONLCR)) != (OPOST | ONLCR))
+                    break;
+            case '\r':
+                off = 0;
+                break;
+            case '\t':
+                off += TTY_TAB_WIDTH - off % TTY_TAB_WIDTH;
+                break;
+            default:
+                off++;
+                break;
+        }
+    }
+    return off;
+}
+
 static inline char tty_remove_char(tty_t * tty, char is_vkill) { // cannon mode, ERASE char, returns 1 when actually removed a char
     spinlock_acquire_interruptible(&tty->iqueue.queue_lock);
-    if (REMAIN(&tty->iqueue) > 0) {
-        if (!(
-            tty->iqueue.buffer[tty->iqueue.tail-1] == '\n' ||
-            (tty->params.c_cc[VEOF] != _POSIX_VDISABLE && tty->iqueue.buffer[tty->iqueue.tail-1] == tty->params.c_cc[VEOF]) ||
-            (tty->params.c_cc[VEOL] != _POSIX_VDISABLE && tty->iqueue.buffer[tty->iqueue.tail-1] == tty->params.c_cc[VEOL])
-        )) {
-            if (!is_vkill && tty->params.c_lflag & ECHO) {
-                if (tty->params.c_lflag & ECHOE) {
+
+    size_t last_idx = tty->iqueue.tail ? tty->iqueue.tail - 1 : MAX_CANON;
+
+    if (REMAIN(&tty->iqueue) == 0 ||
+        tty->iqueue.buffer[last_idx] == '\n' ||
+        (tty->params.c_cc[VEOF] != _POSIX_VDISABLE && tty->iqueue.buffer[last_idx] == tty->params.c_cc[VEOF]) ||
+        (tty->params.c_cc[VEOL] != _POSIX_VDISABLE && tty->iqueue.buffer[last_idx] == tty->params.c_cc[VEOL])
+    ) {
+        spinlock_release(&tty->iqueue.queue_lock);
+        return 0;
+    }
+
+    DEC_LAST(&tty->iqueue);
+
+    if (!is_vkill && tty->params.c_lflag & ECHO) {
+        if (tty->params.c_lflag & ECHOE) {
+            if (tty->iqueue.buffer[last_idx] == '\t') {
+                size_t end = tty_replay_iqueue(tty);
+                size_t diff = tty->tty_column - end;
+                if (diff > TTY_TAB_WIDTH)
+                    goto end; // underflow?
+                for (size_t i = 0; i < diff; i++) {
                     if (tty_translate_line_outgoing("\b \b", 3, tty) != 3) {
                         spinlock_release(&tty->iqueue.queue_lock);
                         return -1;
                     }
-                    switch (tty->iqueue.buffer[tty->iqueue.tail-1]) {
-                        case '\a':
-                        case '\b':
-                        case '\t':
-                        case '\n':
-                        case '\v':
-                        case '\f':
-                        case '\r':
-                            break;
-                        default:
-                            if (tty->params.c_lflag & ECHOCTL) {
-                                if (tty->iqueue.buffer[tty->iqueue.tail-1] < ' ' ||
-
-                                    (tty->params.c_cc[VERASE] != _POSIX_VDISABLE &&
-                                    tty->iqueue.buffer[tty->iqueue.tail-1] == tty->params.c_cc[VERASE])) // probably not gonna happen
-                                {
-                                    // remove the ^ from ^X escape
-                                    if (tty_translate_line_outgoing("\b \b", 3, tty) != 3) {
-                                        spinlock_release(&tty->iqueue.queue_lock);
-                                        return -1;
-                                    }
-                                }
-                            }
-                    }
                 }
-                else {
-                    if (tty_translate_line_outgoing((const char *)&tty->params.c_cc[VERASE], 1, tty) != 1) {
-                        spinlock_release(&tty->iqueue.queue_lock);
-                        return -1;
-                    }
-                }
+                goto end;
             }
-            DEC_LAST(&tty->iqueue);
-            spinlock_release(&tty->iqueue.queue_lock);
-            return 1;
+            if (tty_translate_line_outgoing("\b \b", 3, tty) != 3) {
+                spinlock_release(&tty->iqueue.queue_lock);
+                return -1;
+            }
+            switch (tty->iqueue.buffer[last_idx]) {
+                case '\a':
+                case '\b':
+                case '\t':
+                case '\n':
+                case '\v':
+                case '\f':
+                case '\r':
+                    break;
+                default:
+                    if (tty->params.c_lflag & ECHOCTL) {
+                        if (tty->iqueue.buffer[last_idx] < ' ') {
+                            // remove the ^ from ^X escape
+                            if (tty_translate_line_outgoing("\b \b", 3, tty) != 3) {
+                                spinlock_release(&tty->iqueue.queue_lock);
+                                return -1;
+                            }
+                        }
+                    }
+            }
+        }
+        else {
+            if (tty_translate_line_outgoing((const char *)&tty->params.c_cc[VERASE], 1, tty) != 1) {
+                spinlock_release(&tty->iqueue.queue_lock);
+                return -1;
+            }
         }
     }
+    end:
     spinlock_release(&tty->iqueue.queue_lock);
-    return 0;
+    return 1;
 }
 
 static inline char tty_remove_line(tty_t * tty) { // cannon mode, KILL char
@@ -720,7 +776,6 @@ static inline size_t tty_translate_line_incoming(const char * s, size_t n, tty_t
 
         if (tty->params.c_iflag & ISTRIP) checked &= 0x7F; // stripping top bit
         char final = checked;
-        char skip_char = 0;
         switch (checked) {
             case '\r':
                 if (tty->params.c_iflag & IGNCR) break;
@@ -753,19 +808,18 @@ static inline size_t tty_translate_line_incoming(const char * s, size_t n, tty_t
                     }
                 }
         }
-        if (skip_char) continue;
 
         if (parmarked && tty->params.c_iflag & INPCK) {
             if (tty->params.c_iflag & IGNPAR)
                 goto skipped_parity;
             if (tty->params.c_iflag & PARMRK) {
-                if (tty_queue_putch(&tty->iqueue, (char)0xFF, 0) == 256) return i;
-                if (tty_queue_putch(&tty->iqueue, 0, 0) == 256) return i;
+                if (tty_queue_putch(tty, &tty->iqueue, (char)0xFF, 0) == 256) return i;
+                if (tty_queue_putch(tty, &tty->iqueue, 0, 0) == 256) return i;
             }
         }
         if (tty->params.c_iflag & INPCK && tty->params.c_iflag & PARMRK && !parmarked && final == (char)0xFF)
-            if (tty_queue_putch(&tty->iqueue, (char)0xFF, 0) == 256) return i;
-        if (tty_queue_putch(&tty->iqueue, final, 0) == 256) return i;
+            if (tty_queue_putch(tty, &tty->iqueue, (char)0xFF, 0) == 256) return i;
+        if (tty_queue_putch(tty, &tty->iqueue, final, 0) == 256) return i;
         skipped_parity:
 
         if (tty->params.c_lflag & ECHO) {
@@ -817,7 +871,7 @@ static size_t tty_translate_line_outgoing(const char * s, size_t n, tty_t * tty)
 
     if (!(tty->params.c_oflag & OPOST)) { // to avoid useless switch
         for (size_t i = 0; i < n; i++) {
-            if (tty_queue_putch(&tty->oqueue, s[i], 0) == 256) return i;
+            if (tty_queue_putch(tty, &tty->oqueue, s[i], 0) == 256) return i;
 
             if (!(tty->output_stopped && current_process->ring == 0))
                 tty->write(tty);
@@ -835,25 +889,25 @@ static size_t tty_translate_line_outgoing(const char * s, size_t n, tty_t * tty)
 
         switch (s[i]) {
             case '\r':
-                if (tty->params.c_oflag & ONOCR && tty->oqueue.tty_column == 0)
+                if (tty->params.c_oflag & ONOCR && tty->tty_column == 0)
                     break;
                 if (tty->params.c_oflag & OCRNL) {
-                    if (tty_queue_putch(&tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
+                    if (tty_queue_putch(tty, &tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
                     break;
                 }
             case '\v': // vertical tab is usually the same as newline
             case '\n':
                 if (tty->params.c_oflag & ONLCR && s[i] != '\r') {
                     if (!(tty->params.c_oflag & OCRNL)) {
-                        if (tty_queue_putch(&tty->oqueue, '\r', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
+                        if (tty_queue_putch(tty, &tty->oqueue, '\r', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
                     } else {
-                        if (tty_queue_putch(&tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
+                        if (tty_queue_putch(tty, &tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
                     } // \n twice?
-                    if (tty_queue_putch(&tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
+                    if (tty_queue_putch(tty, &tty->oqueue, '\n', (tty->params.c_oflag & ONLRET) != 0) == 256) return i;
                     break;
                 }
             default:
-                if (tty_queue_putch(&tty->oqueue, s[i], 0) == 256) return i;
+                if (tty_queue_putch(tty, &tty->oqueue, s[i], 0) == 256) return i;
         }
         //if (tty->params.c_lflag & ICANON &&
         //        (s[i] == '\n' ||
@@ -1019,11 +1073,6 @@ long tty_recv_break(dev_t dev) {
         return 0;
     if (tty->params.c_iflag & BRKINT) {
         __atomic_store(
-            &terminals[MINOR(dev)]->iqueue.head,
-            &terminals[MINOR(dev)]->iqueue.tail,
-            __ATOMIC_RELEASE
-        );
-        __atomic_store(
             &terminals[MINOR(dev)]->oqueue.head,
             &terminals[MINOR(dev)]->oqueue.tail,
             __ATOMIC_RELEASE
@@ -1037,10 +1086,10 @@ long tty_recv_break(dev_t dev) {
     }
     sigset_t sig = PAUSE_SIGNALS();
     if (tty->params.c_iflag & PARMRK) {
-        tty_queue_putch(&tty->iqueue, (char)0xFF, 0);
-        tty_queue_putch(&tty->iqueue, 0, 0);
+        tty_queue_putch(tty, &tty->iqueue, (char)0xFF, 0);
+        tty_queue_putch(tty, &tty->iqueue, 0, 0);
     }
-    tty_queue_putch(&tty->iqueue, 0, 0);
+    tty_queue_putch(tty, &tty->iqueue, 0, 0);
     RESTORE_SIGNALS(sig);
     return 0;
 }

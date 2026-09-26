@@ -8,7 +8,7 @@
 
 #define TTY_LONGEST_BREAK_MSEC 2500
 #define KERNEL_CONSOLE_MINOR DEV_TTY_0
-
+#define TTY_TAB_WIDTH 8 // don't increase past 16, otherwise OOB read in fbconsole
 #define TTYDEF_IFLAG    (ICRNL | ISTRIP | IXANY | IXON)
 #define TTYDEF_OFLAG    (OPOST | ONLCR)
 #define TTYDEF_LFLAG    (ECHO | ECHOE | ECHOK | ICANON | ISIG | ECHOCTL)
@@ -56,7 +56,8 @@ struct tty_queue {
 
     thread_queue_t ix_queue;
 
-    unsigned long tty_column; // for ONOCR
+    // useful for the input queue
+    unsigned long tty_start_column; // where this buffer started at, for tabs
 };
 
 
@@ -70,6 +71,7 @@ struct tty_t {
     size_t height;
     size_t width;
 
+    unsigned long tty_column; // for ONOCR
     struct tty_queue iqueue, oqueue; // input, output
 
     pid_t foreground_pgrp;
@@ -117,7 +119,7 @@ char tty_assign_session(inode_t * tty, pid_t session);
 int tty_queue_getch(struct tty_queue * tq, struct timespec timeout);
 
 // onlret being the same as the termios flag, that is resetting tty column to 0 on \n, \v
-int tty_queue_putch(struct tty_queue * tq, char c, char onlret);
+int tty_queue_putch(tty_t * tty, struct tty_queue * tq, char c, char onlret);
 
 ssize_t tty_pwrite(file_descriptor_t * file, const void * s, size_t n, off_t offset);
 ssize_t tty_pread(file_descriptor_t * file, void * s, size_t n, off_t offset);
