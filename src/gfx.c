@@ -59,7 +59,8 @@ void gfx_blit_char_buffered(
     unsigned int x, unsigned int y,
     uint32_t fg_color, uint32_t bg_color,
     char use_palette,
-    unsigned int size_mult
+    unsigned int size_mult,
+    char italic, char overline, char underline, char overstrike
 ) {
     if (size_mult == 0) return;
     if (c >= console_font_chars) return;
@@ -68,14 +69,24 @@ void gfx_blit_char_buffered(
     for (unsigned int fy = 0; fy < console_font_height * size_mult; fy++) {
         if (fy + y >= display_height) break;
         for (unsigned int fx = 0; fx < console_font_width * size_mult; fx++) {
-            if (fx + x >= display_width) break;
+            // on purpose italics this way to be confined to the specific char cell (works on our current font)
+            unsigned int final_x = fx + x - (italic && x ? fy >= console_font_height * size_mult / 2 : 0);
+            if (final_x >= display_width) break;
+
+            if ((overline && fy == 0) ||
+                (underline && fy == console_font_height * size_mult - 1) ||
+                (overstrike && fy == console_font_height * size_mult / 2)) {
+                current_video_funcs->write_pixel_buffered(fx + x, fy + y, fg_color, use_palette);
+                continue;
+            }
+
             if (
                 console_font[c * console_font_height + fy/size_mult] &
                 (1 << (7 - fx/size_mult))
             )
-                current_video_funcs->write_pixel_buffered(fx + x, fy + y, fg_color, use_palette);
+                current_video_funcs->write_pixel_buffered(final_x, fy + y, fg_color, use_palette);
             else
-                current_video_funcs->write_pixel_buffered(fx + x, fy + y, bg_color, use_palette);
+                current_video_funcs->write_pixel_buffered(final_x, fy + y, bg_color, use_palette);
         }
     }
 }
@@ -85,9 +96,10 @@ void gfx_blit_char(
     unsigned int x, unsigned int y,
     uint32_t fg_color, uint32_t bg_color,
     char use_palette,
-    unsigned int size_mult
+    unsigned int size_mult,
+    char italic, char overline, char underline, char overstrike
 ) {
-    gfx_blit_char_buffered(c, x, y, fg_color, bg_color, use_palette, size_mult);
+    gfx_blit_char_buffered(c, x, y, fg_color, bg_color, use_palette, size_mult, italic, overline, underline, overstrike);
     current_video_funcs->swap_region(x, x + size_mult * console_font_width, y, y + size_mult * console_font_height);
 }
 

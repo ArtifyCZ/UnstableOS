@@ -25,6 +25,5 @@
 - no "computer editing" or insertions
 - no programmable tab stops (constant 8)
 - no double widths/heights
-- no underlines
 - no "bolds" (but we do support 16 colors like xterm)
 - no blinks (though I am working on that)

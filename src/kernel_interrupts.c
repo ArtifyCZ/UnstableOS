@@ -38,11 +38,11 @@ void clear_screen_fatal() {
         for (int j = 0; j < display_height; j += console_font_height*4) {
             // 19 = double exclamation
             gfx_blit_char_buffered(19,
-                i, j,
-                CONSOLE_COLOR_RED,
-                CONSOLE_COLOR_BRIGHT_RED,
-                1,
-                4);
+                                   i, j,
+                                   CONSOLE_COLOR_RED,
+                                   CONSOLE_COLOR_BRIGHT_RED,
+                                   1,
+                                   4, 0, 0, 0, 0);
         }
     }
     gfx_swap_buffers();

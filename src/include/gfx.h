@@ -72,7 +72,8 @@ void gfx_blit_char_buffered(
     unsigned int x, unsigned int y,
     uint32_t fg_color, uint32_t bg_color,
     char use_palette,
-    unsigned int size_mult
+    unsigned int size_mult,
+    char italic, char overline, char underline, char overstrike
 );
 
 void gfx_blit_char(
@@ -80,7 +81,8 @@ void gfx_blit_char(
     unsigned int x, unsigned int y,
     uint32_t fg_color, uint32_t bg_color,
     char use_palette,
-    unsigned int size_mult
+    unsigned int size_mult,
+    char italic, char overline, char underline, char overstrike
 );
 
 void * gfx_realloc_back_framebuffer(size_t width, size_t height);

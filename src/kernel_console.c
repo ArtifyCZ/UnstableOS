@@ -19,9 +19,19 @@ enum console_colors_palette console_default_color_fg = CONSOLE_COLOR_WHITE;
 enum console_colors_palette console_default_color_bg = CONSOLE_COLOR_BLACK;
 
 char console_reversed_colors = 0;
+char console_italic = 0;
+char console_overline = 0;
+char console_underline = 0;
+char console_overstrike = 0;
 
 struct character_cell {
     char c;
+    struct {
+        char italic : 1;
+        char overline : 1;
+        char underline : 1;
+        char overstrike : 1;
+    };
     enum console_colors_palette fg;
     enum console_colors_palette bg;
 };
@@ -75,11 +85,11 @@ void console_cursor_hide() {
 
         if (current_process == NULL || console_buffer == NULL) {
             gfx_blit_char(
-               ' ',
-               console_cursor_x * console_font_width * FONT_MULTIPLIER,
-               console_cursor_y * console_font_height * FONT_MULTIPLIER,
-               console_default_color_fg, console_default_color_bg,
-               1, FONT_MULTIPLIER);
+                ' ',
+                console_cursor_x * console_font_width * FONT_MULTIPLIER,
+                console_cursor_y * console_font_height * FONT_MULTIPLIER,
+                console_default_color_fg, console_default_color_bg,
+                1, FONT_MULTIPLIER, 0, 0, 0, 0);
             return;
         }
 
@@ -97,11 +107,12 @@ void console_cursor_hide() {
 
         struct character_cell restored = console_buffer[console_cursor_y * console_buffer_w + console_cursor_x];
         gfx_blit_char(
-           restored.c,
-           console_cursor_x * console_font_width * FONT_MULTIPLIER,
-           console_cursor_y * console_font_height * FONT_MULTIPLIER,
-           restored.fg, restored.bg,
-           1, FONT_MULTIPLIER);
+            restored.c,
+            console_cursor_x * console_font_width * FONT_MULTIPLIER,
+            console_cursor_y * console_font_height * FONT_MULTIPLIER,
+            restored.fg, restored.bg,
+            1, FONT_MULTIPLIER,
+            restored.italic, restored.overline, restored.underline, restored.overstrike);
         spinlock_release(&console_buffer_lock);
         cursor_busy = 0;
     }
@@ -121,7 +132,7 @@ void console_cursor_show() {
             console_cursor_x * console_font_width * FONT_MULTIPLIER,
             console_cursor_y * console_font_height * FONT_MULTIPLIER,
             CONSOLE_CURSOR_FG, CONSOLE_CURSOR_BG,
-            1, FONT_MULTIPLIER);
+            1, FONT_MULTIPLIER, 0, 0, 0, 0);
         cursor_busy = 0;
     }
 }
@@ -177,7 +188,11 @@ void console_redraw_range(int startx, int endx, int starty, int endy) {
                 console_buffer[y * console_buffer_w + x].fg,
                 console_buffer[y * console_buffer_w + x].bg,
                 1,
-                FONT_MULTIPLIER
+                FONT_MULTIPLIER,
+                console_buffer[y * console_buffer_w + x].italic,
+                console_buffer[y * console_buffer_w + x].overline,
+                console_buffer[y * console_buffer_w + x].underline,
+                console_buffer[y * console_buffer_w + x].overstrike
             );
         }
     }
@@ -185,7 +200,7 @@ void console_redraw_range(int startx, int endx, int starty, int endy) {
     spinlock_release(&console_buffer_lock);
 }
 
-static void console_set_char(int x, int y, char c) {
+static void console_set_char(int x, int y, char c, char italic, char overline, char underline, char overstrike) {
     if (x >= display_width_chars / FONT_MULTIPLIER) return;
     if (y >= display_height_chars/ FONT_MULTIPLIER) return;
 
@@ -194,8 +209,9 @@ static void console_set_char(int x, int y, char c) {
 
     if (isprint(c)) {
         gfx_blit_char(c, console_x*console_font_width*FONT_MULTIPLIER,
-                console_y*console_font_height*FONT_MULTIPLIER,
-        console_color_fg, console_color_bg, 1, FONT_MULTIPLIER);
+                      console_y*console_font_height*FONT_MULTIPLIER,
+                      console_color_fg, console_color_bg, 1, FONT_MULTIPLIER,
+                      italic, overline, underline, overstrike);
     }
 
     if (current_process == NULL || panicked_here) return; // scheduler not initialized -> early boot -> no heap
@@ -267,6 +283,10 @@ static void console_set_char(int x, int y, char c) {
 
     console_buffer[y * console_buffer_w + x] = (struct character_cell) {
         .c = c,
+        .italic = italic,
+        .overline = overline,
+        .underline = underline,
+        .overstrike = overstrike,
         .fg = console_color_fg,
         .bg = console_color_bg
     };
@@ -326,6 +346,7 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
             console_color_fg = console_default_color_fg;
             console_color_bg = console_default_color_bg;
             console_reversed_colors = 0;
+            console_italic = console_overline = console_underline = console_overstrike = 0;
             return;
         case 'J':
             erase_cursor_screen_end:
@@ -530,12 +551,30 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
         case 'm':
             switch (id) {
                 case 0: goto reset_graphics;
+                case 3:
+                    console_italic = 1;
+                    return;
+                case 23:
+                    console_italic = 0;
+                    return;
+                case 4:
+                    console_underline = 1;
+                    return;
+                case 24:
+                    console_underline = 0;
+                    return;
                 case 7:
                     // so we don't have to do ifs in our drawing code
                     temp = console_color_bg;
                     console_color_bg = console_color_fg;
                     console_color_fg = temp;
                     console_reversed_colors = 1;
+                    return;
+                case 9:
+                    console_overstrike = 1;
+                    return;
+                case 29:
+                    console_overstrike = 0;
                     return;
                 case 27:
                     if (!console_reversed_colors) return;
@@ -554,6 +593,12 @@ static void handle_ansi_escapes(const char * ansi_sequence) {
                     return;
                 case 49:
                     console_color_bg = console_default_color_bg;
+                    return;
+                case 53:
+                    console_overline = 1;
+                    return;
+                case 55:
+                    console_overline = 0;
                     return;
                 case 90 ... 97:
                     console_color_fg = id - 90 + 8;
@@ -816,7 +861,8 @@ void console_write(const char * s, size_t len) {
             console_write("                ", old_delta);
             continue;
         }
-        console_set_char(console_x, console_y, s[i]);
+        console_set_char(console_x, console_y, s[i],
+            console_italic, console_overline, console_underline, console_overstrike);
         if (console_x >= display_width_chars / FONT_MULTIPLIER - 1) {
             console_x = 0;
             goto new_line;
