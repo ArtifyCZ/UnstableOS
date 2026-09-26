@@ -15,6 +15,11 @@ struct termios {
     cc_t c_cc[NCCS];
 };
 
+struct winsize {
+    unsigned short ws_row;
+    unsigned short ws_col;
+};
+
 // NC non-canonical, IC canonical ("line buffered")
 #define VEOF   0  // IC       if ICANON all bytes immediately sent to process (as if \n was entered)
 #define VEOL   1  // IC       if ICANON another \n
@@ -126,4 +131,7 @@ speed_t cfgetispeed(const struct termios *termios_p);
 speed_t cfgetospeed(const struct termios *termios_p);
 int cfsetispeed(struct termios *termios_p, speed_t speed);
 int cfsetospeed(struct termios *termios_p, speed_t speed);
+
+int tcgetwinsize(int fildes, struct winsize *winsize_p);
+int tcsetwinsize(int fildes, const struct winsize *winsize_p);
 #endif

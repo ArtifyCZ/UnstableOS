@@ -251,13 +251,17 @@ void visible(unsigned char c, char * buf) {
     *buf = '\0';
 }
 
-void print_termios_structure(const struct termios * termios, char show_all) {
+// ws only used with show_all
+void print_termios_structure(const struct termios * termios, const struct winsize * ws, char show_all) {
     if (cfgetispeed(termios) != cfgetospeed(termios))
-        printf("ispeed %d baud; ospeed %d baud;\n",
+        printf("ispeed %d baud; ospeed %d baud;",
             baud_lookup[cfgetispeed(termios) & CBAUD],
             baud_lookup[cfgetospeed(termios) & CBAUD]);
     else
-        printf("speed %d baud;\n", baud_lookup[cfgetispeed(termios) & CBAUD]);
+        printf("speed %d baud;", baud_lookup[cfgetispeed(termios) & CBAUD]);
+    if (show_all)
+        printf(" rows %d; columns %d;", ws->ws_row, ws->ws_col);
+    printf("\n");
 
     char printed = 0;
     // control characters
@@ -380,9 +384,13 @@ void show_help(const char * argv0) {
         "\tsusp\tCHAR\tRaises a SIGTSTP to the foreground process group\n\n"
         "Special settings\n"
         "\tN   \t\tSets both the input and output speed to N baud, 0 to hangup\n"
+        "\tcols\tN\tSets the kernel column count\n"
+        "\tcolumns\tN\tSame as cols\n"
         "\tispeed\tN\tSets the input speed to N baud, 0 to hangup\n"
         "\tospeed\tN\tSets the output speed to N baud, 0 to hangup\n"
         "\tspeed\t\tPrints the terminal speed, 0 if hungup\n"
+        "\trows\tN\tSets the kernel row count\n"
+        "\tsize\t\tPrints the kernel terminal size\n"
         "\tmin \tN\tIn non-canonical mode specifies minimum N bytes to read\n"
         "\ttime\tN\tIn non-canonical mode specifies read timeout in deciseconds\n\n"
         "Control settings\n"
@@ -551,20 +559,27 @@ int main(int argc, char *argv[]) {
     }
 
     if (argc == 1) {
-        print_termios_structure(&expected, 0);
+        print_termios_structure(&expected, NULL, 0);
         return 0;
+    }
+
+    struct winsize ws;
+    if (tcgetwinsize(fd, &ws) != 0) {
+        perror("tcgetwinsize");
+        return 255;
     }
 
     char show_all = 0;
     char show_modeline = 0;
     char show_speed = 0;
+    char show_size = 0;
     char actual_options = 0;
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-F") == 0) {
             i++;
             continue;
         }
-        if (strcmp(argv[i], "--help") == 0) {
+        if (strcmp(argv[i], "--help") == 0 || strcmp(argv[i] , "-h") == 0) {
             show_help(argv[0]);
             return 0;
         }
@@ -585,6 +600,10 @@ int main(int argc, char *argv[]) {
         }
         if (strcmp(argv[0], "speed") == 0) {
             show_speed = 1;
+            continue;
+        }
+        if (strcmp(argv[0], "size") == 0) {
+            show_size = 1;
             continue;
         }
         actual_options = 1;
@@ -782,6 +801,35 @@ int main(int argc, char *argv[]) {
             continue;
         }
 
+        if (strcmp(argv[i], "cols") == 0 || strcmp(argv[i], "columns") == 0) {
+            if (!argv[++i]) {
+                fprintf(stderr, "stty: missing argument to 'cols'\n");
+                fprintf(stderr, "'stty --help' for more information.\n");
+                return 1;
+            }
+            char * end = NULL;
+            if (argv[i][0] == '-')
+                goto errored;
+            ws.ws_col = strtol(argv[i], &end, 10);
+            if (!end || *end != '\0')
+                goto errored;
+            continue;
+        }
+        if (strcmp(argv[i], "rows") == 0) {
+            if (!argv[++i]) {
+                fprintf(stderr, "stty: missing argument to 'rows'\n");
+                fprintf(stderr, "'stty --help' for more information.\n");
+                return 1;
+            }
+            char * end = NULL;
+            if (argv[i][0] == '-')
+                goto errored;
+            ws.ws_row = strtol(argv[i], &end, 10);
+            if (!end || *end != '\0')
+                goto errored;
+            continue;
+        }
+
         if (strcmp(argv[i], "ispeed") == 0) {
             if (!argv[++i]) {
                 fprintf(stderr, "stty: missing argument to 'ispeed'\n");
@@ -860,7 +908,7 @@ int main(int argc, char *argv[]) {
     }
 
     if (!actual_options) {
-        print_termios_structure(&expected, show_all);
+        print_termios_structure(&expected, &ws, show_all);
         return 0;
     }
     if (show_modeline) {
@@ -875,6 +923,10 @@ int main(int argc, char *argv[]) {
         perror("stty: tcsetattr");
         return 255;
     }
+    if (tcsetwinsize(fd, &ws) != 0) {
+        perror("stty: tcsetwinsize");
+        return 255;
+    }
 
     struct termios actual;
     if (tcgetattr(fd, &actual) != 0) {
@@ -887,6 +939,9 @@ int main(int argc, char *argv[]) {
     }
     if (show_speed) {
         printf("%d\n", cfgetispeed(&expected));
+    }
+    if (show_size) {
+        printf("%d %d\n", ws.ws_row, ws.ws_col);
     }
     return 0;
 }

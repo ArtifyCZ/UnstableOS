@@ -89,3 +89,10 @@ int cfsetispeed(struct termios *termios_p, speed_t speed) {
 int cfsetospeed(struct termios *termios_p, speed_t speed) {
     return cfsetispeed(termios_p, speed);
 }
+
+int tcgetwinsize(int fildes, struct winsize *winsize_p) {
+    return ioctl(fildes, TIOCGWINSZ, winsize_p);
+}
+int tcsetwinsize(int fildes, const struct winsize *winsize_p) {
+    return ioctl(fildes, TIOCSWINSZ, winsize_p);
+}

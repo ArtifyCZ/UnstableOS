@@ -151,6 +151,7 @@ long tty_ioctl(file_descriptor_t * file, unsigned long request, void * arg) {
         case TCXONC:
         case TCFLSH:
         case TCSBRKP:
+        case TIOCSWINSZ:
             if (current_process->session != terminals[MINOR(dev)]->session ||
                 current_process->pgrp    == terminals[MINOR(dev)]->foreground_pgrp)
                     break;
@@ -336,6 +337,29 @@ long tty_ioctl(file_descriptor_t * file, unsigned long request, void * arg) {
             terminals[MINOR(dev)]->brk(terminals[MINOR(dev)], 0);
             spinlock_release(&terminals[MINOR(dev)]->tty_lock);
             return 0;
+        case TIOCGWINSZ:
+            if (paging_check_address_range(arg, sizeof(struct winsize), 1, 0) == 0)
+                return -EFAULT;
+            struct winsize * ws = arg;
+            ws->ws_col = __atomic_load_n(&terminals[MINOR(dev)]->width, __ATOMIC_ACQUIRE);
+            ws->ws_row = __atomic_load_n(&terminals[MINOR(dev)]->height, __ATOMIC_ACQUIRE);
+            return 0;
+        case TIOCSWINSZ:
+            if (paging_check_address_range(arg, sizeof(struct winsize), 0, 0) == 0)
+                return -EFAULT;
+            ws = arg;
+            char sig = 1;
+            if (memcmp(arg, &(struct winsize){
+                .ws_col = (unsigned short)terminals[MINOR(dev)]->width,
+                .ws_row = (unsigned short)terminals[MINOR(dev)]->height,
+                }, sizeof(struct winsize)) == 0)
+                sig = 1;
+
+            __atomic_store_n(&terminals[MINOR(dev)]->width, ws->ws_col, __ATOMIC_RELEASE);
+            __atomic_store_n(&terminals[MINOR(dev)]->height, ws->ws_row, __ATOMIC_RELEASE);
+            if (sig)
+                signal_process_group(terminals[MINOR(dev)]->foreground_pgrp, &(siginfo_t) {.si_signo = SIGWINCH});
+            return 0;
         default:
             return -EINVAL;
     }
@@ -495,8 +519,9 @@ void tty_alloc_kernel_console() { // for the kernel task, don't call for user pr
         TTYDEF_LFLAG,
         TTYDEF_OFLAG,
         TTYDEF_CFLAG,
-        default_control_chars, display_height,
-        display_width, tty_console_write,
+        default_control_chars,
+        display_height / console_font_height, display_width / console_font_width,
+        tty_console_write,
         NULL, NULL, NULL, 0, 0, 0);
     tty_register(tty0, DEV_TTY_0);
 
@@ -505,8 +530,9 @@ void tty_alloc_kernel_console() { // for the kernel task, don't call for user pr
         TTYDEF_LFLAG,
         TTYDEF_OFLAG,
         TTYDEF_CFLAG,
-        default_control_chars, display_height,
-        display_width, tty_com_write,
+        default_control_chars,
+        0,0,
+        tty_com_write,
         com_ctl, com_brk, com_hup, 0, 0, 0);
     tty_register(ttyS0, DEV_TTY_S0);
 
@@ -515,8 +541,9 @@ void tty_alloc_kernel_console() { // for the kernel task, don't call for user pr
         TTYDEF_LFLAG,
         TTYDEF_OFLAG,
         TTYDEF_CFLAG,
-        default_control_chars, display_height,
-        display_width, tty_com_write,
+        default_control_chars,
+        0,0,
+        tty_com_write,
         com_ctl, com_brk, com_hup, 1, 0, 0);
     tty_register(ttyS1, DEV_TTY_S0 + 1);
 
