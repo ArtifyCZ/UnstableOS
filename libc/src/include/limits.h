@@ -29,7 +29,7 @@
 
 #define ULLONG_MAX ((unsigned long long)-1)
 
-#define MB_LEN_MAX 1 // we don't yet support unicode :P
+#define MB_LEN_MAX 4
 
 #define SHRT_MAX  (((unsigned short)1 << (sizeof(short) * 8 - 1)) - 1)
 #define SHRT_MIN  (-(short)SHRT_MAX)

@@ -9,7 +9,7 @@
 #define TTY_LONGEST_BREAK_MSEC 2500
 #define KERNEL_CONSOLE_MINOR DEV_TTY_0
 #define TTY_TAB_WIDTH 8 // don't increase past 16, otherwise OOB read in fbconsole
-#define TTYDEF_IFLAG    (ICRNL | ISTRIP | IXANY | IXON)
+#define TTYDEF_IFLAG    (ICRNL | IXANY | IXON)
 #define TTYDEF_OFLAG    (OPOST | ONLCR)
 #define TTYDEF_LFLAG    (ECHO | ECHOE | ECHOK | ICANON | ISIG | ECHOCTL)
 #define TTYDEF_CFLAG    (B115200 | CS8 | CREAD | HUPCL)

@@ -8,7 +8,7 @@
 
 int abs(int i);
 
-#define MB_CUR_MAX sizeof(char)
+#define MB_CUR_MAX 4
 #define RAND_MAX (INT_MAX)
 
 int rand();
