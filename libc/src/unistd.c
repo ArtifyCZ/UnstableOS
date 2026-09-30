@@ -647,3 +647,20 @@ int ttyname_r(int fildes, char *name, size_t namesize) {
     dev2string(st.st_rdev, name + strlen("/dev/"));
     return 0;
 }
+
+int gethostname(char *name, size_t namelen) {
+    int ret = syscall(SYSCALL_GETHOSTNAME, name, namelen);
+    if (ret < 0) {
+        ___set_errno(-ret);
+        return -1;
+    }
+    return 0;
+}
+int sethostname(const char *name, size_t namelen) {
+    int ret = syscall(SYSCALL_SETHOSTNAME, name, namelen);
+    if (ret < 0) {
+        ___set_errno(-ret);
+        return -1;
+    }
+    return 0;
+}

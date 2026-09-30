@@ -752,6 +752,46 @@ void kernel_syscall_dispatcher(__gregcontext_t * ctx) {
             return_value = sys_setgroups(arg1, (gid_t*)arg2);
             VM_UNLOCK(arg2);
             break;
+
+
+        case SYSCALL_GETHOSTNAME:
+            VM_LOCK(arg1);
+            if (!paging_check_address_range((void*)arg1, arg2, 1, in_kernel)) {
+                return_value = -EFAULT;
+                VM_UNLOCK(arg1);
+                break;
+            }
+            rw_spinlock_acquire_read(&hostname_lock);
+            memcpy((void*)arg1, hostname, hostname_len > arg2 ? arg2 : hostname_len);
+            if (hostname_len < arg2)
+                ((char *)arg1)[arg2 - 1] = '\0';
+            rw_spinlock_release_read(&hostname_lock);
+            VM_UNLOCK(arg1);
+            return_value = 0;
+            break;
+        case SYSCALL_SETHOSTNAME:
+            if (current_process->euid != 0) {
+                return_value = -EACCES;
+                break;
+            }
+            if (arg2 > HOST_NAME_MAX) {
+                return_value = -ERANGE;
+                break;
+            }
+
+            VM_LOCK(arg1);
+            if (!paging_check_address_range((void*)arg1, arg2, 1, in_kernel)) {
+                return_value = -EFAULT;
+                VM_UNLOCK(arg1);
+                break;
+            }
+            rw_spinlock_acquire_write(&hostname_lock);
+            memcpy(hostname, (void*)arg1, arg2);
+            hostname_len = arg2;
+            rw_spinlock_release_write(&hostname_lock);
+            VM_UNLOCK(arg1);
+            return_value = 0;
+            break;
         default:
             return_value = -ENOSYS;
             break;

@@ -3,12 +3,18 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <UnstableOS/devs.h>
+#include <limits.h>
 
 #define KERNEL_TIMER_RESOLUTION_MSEC 4
 #define RTC_TIMER_RESOLUTION_HZ 1024
 #define RTC_TIME_RESOLUTION_USEC (1000000 / RTC_TIMER_RESOLUTION_HZ)
 
 #define KERNEL_VERSION "UnstableOS v0.01"
+#define DEFAULT_HOSTNAME "UnstableOS"
+#include "kernel_spinlock.h"
+extern rw_spinlock_t hostname_lock;
+extern char hostname[HOST_NAME_MAX]; // Warning: might not be null terminated!
+extern size_t hostname_len;
 
 #define __STR_INNER(x) #x
 #define STR(x) __STR_INNER(x)

@@ -311,6 +311,9 @@ static void setup_features() {
         fxsave_available)
             enable_sse();
 }
+rw_spinlock_t hostname_lock = {0};
+char hostname[HOST_NAME_MAX] = DEFAULT_HOSTNAME;
+size_t hostname_len = sizeof(DEFAULT_HOSTNAME);
 
 void kernel_entry(multiboot_info_t* mbd, unsigned int magic) {
     extern char is_klibc;

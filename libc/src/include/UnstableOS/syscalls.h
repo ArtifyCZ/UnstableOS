@@ -118,6 +118,9 @@ enum syscalls {
     SYSCALL_MMAP, // same as mmap(), but off is pointer to off_t
     SYSCALL_MUNMAP,
     SYSCALL_MPROTECT,
+
+    SYSCALL_GETHOSTNAME,
+    SYSCALL_SETHOSTNAME,
 };
 
 #endif

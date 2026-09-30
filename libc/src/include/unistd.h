@@ -145,4 +145,7 @@ char *crypt(const char *key, const char *salt);
 
 char * ttyname(int fildes);
 int ttyname_r(int fildes, char *name, size_t namesize);
+
+int gethostname(char *name, size_t namelen);
+int sethostname(const char *name, size_t namelen);
 #endif
