@@ -2,10 +2,14 @@
 #define _WCTYPE_H
 #include <wchar.h>
 
-int iswalpha(wint_t wc);
+typedef unsigned int wctype_t;
+typedef unsigned int wctrans_t;
+
 int iswalnum(wint_t wc);
+int iswalpha(wint_t wc);
 int iswblank(wint_t wc);
 int iswcntrl(wint_t wc);
+int iswctype(wint_t wc, wctype_t charclass);
 int iswdigit(wint_t wc);
 int iswgraph(wint_t wc);
 int iswlower(wint_t wc);
@@ -14,6 +18,9 @@ int iswpunct(wint_t wc);
 int iswspace(wint_t wc);
 int iswupper(wint_t wc);
 int iswxdigit(wint_t wc);
+wint_t towctrans(wint_t wc, wctrans_t desc);
 wint_t towlower(wint_t wc);
 wint_t towupper(wint_t wc);
+wctrans_t wctrans(const char *charclass);
+wctype_t wctype(const char *property);
 #endif

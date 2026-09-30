@@ -229,7 +229,7 @@ wint_t towupper(wint_t wc) {
     if (wc == WEOF) return WEOF;
     // for my dearest Adrian, and not so dear Miezekatze; fuck special casing rules, grr
     if (wc == L'ß')
-        return 'ẞ';
+        return L'ẞ';
     if (!iswlower(wc))
         return wc;
     if (is_nontrivial(wc))
@@ -268,4 +268,70 @@ wint_t towupper(wint_t wc) {
     if (ex[3])
         return wc + ex[2];
     return wc - ex[2];
+}
+
+#include <string.h>
+
+#define WC_INVALID 0
+
+#define WCTYPES \
+    X(alnum, 1)   \
+    X(alpha, 2)   \
+    X(blank, 3)   \
+    X(cntrl, 4)   \
+    X(digit, 5)   \
+    X(graph, 6)   \
+    X(lower, 7)   \
+    X(print, 8)   \
+    X(punct, 9)   \
+    X(space, 10)  \
+    X(upper, 11)  \
+    X(xdigit, 12)
+
+#define X(m, v) [v] = isw ## m,
+static int (*const iswfuncs[])(wint_t wc) = {
+    WCTYPES
+};
+#undef X
+#define X(m, v) [v] = #m,
+static const char *const classes[] = {
+    WCTYPES
+};
+#undef X
+
+wctype_t wctype(const char *property) {
+    for (int i = 0; i < sizeof(classes)/sizeof(char*); i++)
+        if (classes[i] && strcmp(property, classes[i]) == 0)
+            return i;
+    return WC_INVALID;
+}
+
+int iswctype(wint_t wc, wctype_t charclass) {
+    if (wc == WEOF) return 0;
+    if (charclass == WC_INVALID || charclass >= sizeof(iswfuncs) / sizeof(iswfuncs[0]))
+        return 0;
+    return iswfuncs[charclass](wc);
+}
+
+#define TRANS_UPPER 1
+#define TRANS_LOWER 2
+
+wctrans_t wctrans(const char *charclass) {
+    if (strcmp(charclass, "upper") == 0)
+        return TRANS_UPPER;
+    if (strcmp(charclass, "lower") == 0)
+        return TRANS_LOWER;
+    return 0;
+}
+wint_t towctrans(wint_t wc, wctrans_t desc) {
+    if (wc == WEOF)
+        return WEOF;
+    switch (desc) {
+        case TRANS_UPPER:
+            return towupper(wc);
+        case TRANS_LOWER:
+            return towlower(wc);
+        default:
+            return wc;
+    }
 }
