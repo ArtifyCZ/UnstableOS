@@ -93,3 +93,22 @@ int wcsncmp(const wchar_t *ws1, const wchar_t *ws2, size_t n) {
     }
     return 0;
 }
+#include <wctype.h>
+int wcscasecmp(const wchar_t *ws1, const wchar_t *ws2) {
+    for (size_t i = 0; ws1[i] || ws2[i]; i++) {
+        if (towlower(ws1[i]) != towlower(ws2[i])) {
+            if (towlower(ws1[i]) < towlower(ws2[i])) return -1;
+            return 1;
+        }
+    }
+    return 0;
+}
+int wcsncasecmp(const wchar_t *ws1, const wchar_t *ws2, size_t n) {
+    for (size_t i = 0; i < n && (ws1[i] || ws2[i]); i++) {
+        if (towlower(ws1[i]) != towlower(ws2[i])) {
+            if (towlower(ws1[i]) < towlower(ws2[i])) return -1;
+            return 1;
+        }
+    }
+    return 0;
+}

@@ -14,6 +14,9 @@ int toupper(int c) {
     if (islower(c)) return c - 0x20;
     return c;
 }
+int toascii(int c) {
+    return c & 0x7F;
+}
 
 int islower(int c) {
     if (c >= 'a' && c <= 'z') return 1;

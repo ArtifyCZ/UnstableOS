@@ -29,6 +29,8 @@ wchar_t *wcscat(wchar_t *__restrict ws1, const wchar_t *__restrict ws2);
 wchar_t *wcsncat(wchar_t *__restrict ws1, const wchar_t *__restrict ws2, size_t n);
 int wcscmp(const wchar_t *ws1, const wchar_t *ws2);
 int wcsncmp(const wchar_t *ws1, const wchar_t *ws2, size_t n);
+int wcscasecmp(const wchar_t *ws1, const wchar_t *ws2);
+int wcsncasecmp(const wchar_t *ws1, const wchar_t *ws2, size_t n);
 
 int mbsinit(const mbstate_t *ps);
 size_t wcrtomb(char *__restrict s, wchar_t wc, mbstate_t *__restrict ps);
