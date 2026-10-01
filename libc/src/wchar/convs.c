@@ -1,5 +1,6 @@
 #include <wchar.h>
 #include <errno.h>
+#include <stdlib.h>
 
 size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict ps) {
     if (!s)
@@ -10,7 +11,7 @@ size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict ps) {
     // actual maximum is U+1FFFFF
     if (wc < 0 || wc > 0x10FFFF) {
         ___set_errno(EILSEQ);
-        return WEOF;
+        return -1;
     }
 
     wint_t c = wc;
@@ -35,19 +36,17 @@ size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict ps) {
     }
     if (__builtin_clz(c) - 24 < b + 1) {
         s[i] = (c & 0x3F) | 0x80;
-        i--;
         c >>= 6;
     }
     int final = 0b11111111 & ~((1 << (7 - b)) - 1);
     final |= (int)c;
     s[0] = final;
-    return b;
+    return b + 1;
 }
 int wctomb(char *s, wchar_t wchar) {
     size_t ret = wcrtomb(s, wchar, NULL);
-    return ret == WEOF ? -1 : ret;
+    return (int)ret;
 }
-
 
 
 size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_t *restrict ps) {
@@ -83,7 +82,7 @@ size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_
     unsigned int remain = *ps >> 30;
 
     for (; i < n; i++) {
-        if (*ps & (3<<30) && (_s[i] & 0xC0) != 0x80)
+        if (remain && (_s[i] & 0xC0) != 0x80)
             goto ilseq;
         *ps <<= 6;
         *ps |= _s[i] & 0x3F;
@@ -91,7 +90,7 @@ size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_
         if (remain == 0) {
             *pwc = *ps;
             *ps = 0;
-            return n - i;
+            return i + 1;
         }
     }
     *ps &= ~(3 << 30);
@@ -104,6 +103,73 @@ size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_
 }
 
 size_t mbrlen(const char *restrict s, size_t n, mbstate_t *restrict ps) {
-    mbstate_t internal;
+    mbstate_t internal = 0;
     return mbrtowc(NULL, s, n, ps != NULL ? ps : &internal);
+}
+
+// there's a lot of talk in the POSIX definition of this function regarding if dst is non-NULL
+// however nothing about if it is NULL, so I decided to just perform the conversion and not save the result
+size_t mbsnrtowcs(wchar_t *restrict dst, const char **restrict src, size_t nmc, size_t len, mbstate_t *restrict ps) {
+    const char * s = *src;
+    static mbstate_t internal = 0;
+    if (!ps)
+        ps = &internal;
+
+    size_t i = 0;
+    for (; i < len && s - *src < nmc; i++) {
+        size_t to_read = nmc - (s - *src);
+        to_read = to_read < MB_CUR_MAX ? to_read : MB_CUR_MAX;
+        wchar_t wc;
+        size_t delta = mbrtowc(&wc, s, to_read, ps);
+        if (delta == -2)
+            break;
+        if (delta == -1)
+            return -1;
+        if (dst)
+            *dst++ = wc;
+        if (wc == 0) {
+            *src = NULL;
+            return i;
+        }
+        s += delta;
+    }
+    *src = s;
+    return i;
+}
+size_t mbsrtowcs(wchar_t *restrict dst, const char **restrict src, size_t len, mbstate_t *restrict ps) {
+    return mbsnrtowcs(dst, src, -1, len, ps);
+}
+
+#include <string.h>
+size_t wcsnrtombs(char *restrict dst, const wchar_t **restrict src, size_t nwc, size_t len, mbstate_t *restrict ps) {
+    const wchar_t * s = *src;
+    static mbstate_t internal = 0;
+    if (!ps)
+        ps = &internal;
+
+    size_t i = 0;
+    for (; i < len && s - *src < nwc; s++) {
+        size_t to_write = len - i;
+        to_write = to_write < MB_CUR_MAX ? to_write : MB_CUR_MAX;
+        char buf[MB_CUR_MAX];
+        size_t written = wcrtomb(buf, *s, ps);
+        if (written == -1)
+            return -1;
+        if (written > to_write) {
+            *src = s;
+            return i;
+        }
+        memcpy(dst, buf, written);
+        if (*s == 0) {
+            *src = NULL;
+            return i;
+        }
+        dst += written;
+        i += written;
+    }
+    *src = s;
+    return i;
+}
+size_t wcsrtombs(char *restrict dst, const wchar_t **restrict src, size_t len, mbstate_t *restrict ps) {
+    return wcsnrtombs(dst, src, -1, len, ps);
 }
