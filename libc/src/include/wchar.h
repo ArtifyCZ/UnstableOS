@@ -40,6 +40,8 @@ wchar_t *wmemcpy(wchar_t *__restrict ws1, const wchar_t *__restrict ws2, size_t 
 wchar_t *wmemmove(wchar_t *ws1, const wchar_t *ws2, size_t n);
 wchar_t *wmemset(wchar_t *ws, wchar_t wc, size_t n);
 
+int wcwidth(wchar_t wc); // source in wctype.c
+int wcswidth(const wchar_t *pwcs, size_t n);
 int wcscmp(const wchar_t *ws1, const wchar_t *ws2);
 int wcsncmp(const wchar_t *ws1, const wchar_t *ws2, size_t n);
 int wcscoll(const wchar_t *ws1, const wchar_t *ws2);

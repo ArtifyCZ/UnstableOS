@@ -65,28 +65,23 @@ int iswxdigit(wint_t wc) {
 
 #define iswmacro(low, high) {                       \
     if (wc == WEOF) return 0;                       \
-    unsigned int res[2];                            \
+    const unsigned short * res;                     \
     if (wc > 0xFFFF) {                              \
-        const unsigned int * _res = binary_search(  \
+        wc -= 0x10000;                              \
+        res = binary_search(                        \
             (high),                                 \
             sizeof((high)[0]),                      \
             sizeof((high)) / sizeof((high)[0]),     \
-            1, wc);                                 \
-        if (_res == NULL)                           \
-            return 0;                               \
-        res[0] = _res[0];                           \
-        res[1] = _res[1];                           \
+            0, wc);                                 \
     } else {                                        \
-        const unsigned short * _res = binary_search(\
+        res = binary_search(                        \
             (low),                                  \
             sizeof((low)[0]),                       \
             sizeof((low)) / sizeof((low)[0]),       \
             0, wc);                                 \
-        if (_res == NULL)                           \
-            return 0;                               \
-        res[0] = _res[0];                           \
-        res[1] = _res[1];                           \
     }                                               \
+    if (res == NULL)                                \
+        return 0;                                   \
     if (res[0] > wc)                                \
         return 0;                                   \
     if (res[1] < wc)                                \
@@ -106,6 +101,19 @@ static int is_modif(wint_t wc) {
     iswmacro(modifier_letters, modifier_letters_high)
 }
 static int is_other(wint_t wc) {
+    if (wc > 0x1FFFF) {
+        const unsigned int * res = binary_search(
+            other_letters_very_high,
+            sizeof(other_letters_very_high[0]),
+            sizeof(other_letters_very_high) / sizeof(other_letters_very_high[0]),
+            1, wc);
+        if (res == NULL)
+            return 1;
+        if (res[0] > wc)
+            return 0;
+        if (res[1] < wc)
+            return 0;
+    }
     iswmacro(other_letters, other_letters_high)
 }
 static int is_titlecase(wint_t wc) {
@@ -139,6 +147,7 @@ int iswspace(wint_t wc) {
             return 0;
     }
 }
+// dictated by that ISO document
 int iswcntrl(wint_t wc) {
     switch (wc) {
         case 0 ... 0x1F:
@@ -334,4 +343,13 @@ wint_t towctrans(wint_t wc, wctrans_t desc) {
         default:
             return wc;
     }
+}
+
+static int is_zerowidth(wint_t wc) {
+    iswmacro(zerowidth_ranges, zerowidth_ranges_high)
+}
+int wcwidth(wchar_t wc) {
+    if (wc < 0 || wc >= 0xE0000 || is_zerowidth(wc))
+        return 0;
+    return 1; // TODO: somewhat of a stub, I don't know how to find large characters
 }

@@ -228,3 +228,11 @@ wchar_t *wmemset(wchar_t *ws, wchar_t wc, size_t n) {
     }
     return ws;
 }
+
+
+int wcswidth(const wchar_t *pwcs, size_t n) {
+    int cols = 0;
+    size_t i = 0;
+    while (*pwcs && i < n) cols += wcwidth(*pwcs++), i++;
+    return cols;
+}
