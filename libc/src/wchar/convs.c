@@ -43,11 +43,6 @@ size_t wcrtomb(char *restrict s, wchar_t wc, mbstate_t *restrict ps) {
     s[0] = final;
     return b + 1;
 }
-int wctomb(char *s, wchar_t wchar) {
-    size_t ret = wcrtomb(s, wchar, NULL);
-    return (int)ret;
-}
-
 
 size_t mbrtowc(wchar_t *restrict pwc, const char *restrict s, size_t n, mbstate_t *restrict ps) {
     static mbstate_t internal = 0;

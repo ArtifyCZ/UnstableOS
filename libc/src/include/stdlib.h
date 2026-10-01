@@ -5,6 +5,7 @@
 #include "sys/wait.h" // posix requires WIF*
 #include "fcntl.h" // posix requires O_*
 #include <limits.h>
+#include <stddef.h>
 
 int abs(int i);
 
@@ -51,4 +52,11 @@ int getsubopt(char **__restrict optionp, char * const *__restrict keylistp, char
 
 void qsort(void *base, size_t nel, size_t width, int (*compar)(const void *, const void *));
 void qsort_r(void *base, size_t nel, size_t width, int (*compar)(const void *, const void *, void *), void *arg);
+
+size_t mbstowcs(wchar_t *__restrict pwcs, const char *__restrict s, size_t n);
+int mbtowc(wchar_t *__restrict pwc, const char *__restrict s, size_t n);
+int mblen(const char *s, size_t n);
+
+size_t wcstombs(char *__restrict s, const wchar_t *__restrict pwcs, size_t n);
+int wctomb(char *s, wchar_t wchar);
 #endif

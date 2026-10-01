@@ -289,3 +289,42 @@ int setenv(const char *envname, const char *envval, int overwrite) {
     strcpy(new_var + env_len + 1, envval);
     return __putenv(new_var, 1);
 }
+
+#include <wchar.h>
+
+int mbtowc(wchar_t *restrict pwc, const char *restrict s, size_t n) {
+    static mbstate_t ps = 0;
+    if (s == NULL) {
+        ps = 0;
+        return 1; // character encoding is state dependant
+    }
+    return (int)mbrtowc(pwc, s, n, &ps);
+}
+int mblen(const char *s, size_t n) {
+    if (s == NULL)
+        return 1; // character encoding is state dependant
+    mbstate_t ps = 0;
+    return (int)mbrtowc(NULL, s, n, &ps);
+}
+
+size_t mbstowcs(wchar_t *restrict pwcs, const char *restrict s, size_t n) {
+    mbstate_t ps = 0;
+    const char * src = s;
+    return mbsrtowcs(pwcs, &src, n, &ps);
+}
+
+int wctomb(char *s, wchar_t wchar) {
+    static mbstate_t ps = 0;
+    if (s == NULL) {
+        ps = 0;
+        return 1; // character encoding is state dependant
+    }
+    return (int)wcrtomb(s, wchar, &ps);
+}
+
+
+size_t wcstombs(char *restrict s, const wchar_t *restrict pwcs, size_t n) {
+    mbstate_t ps = 0;
+    const wchar_t * src = pwcs;
+    return wcsrtombs(s, &src, n, &ps);
+}

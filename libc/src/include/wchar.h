@@ -50,7 +50,6 @@ int wcsncasecmp(const wchar_t *ws1, const wchar_t *ws2, size_t n);
 
 int mbsinit(const mbstate_t *ps);
 size_t wcrtomb(char *__restrict s, wchar_t wc, mbstate_t *__restrict ps);
-int wctomb(char *s, wchar_t wchar);
 size_t mbrtowc(wchar_t *__restrict pwc, const char *__restrict s, size_t n, mbstate_t *__restrict ps);
 size_t mbrlen(const char *__restrict s, size_t n, mbstate_t *__restrict ps);
 size_t mbsrtowcs(wchar_t *__restrict dst, const char **__restrict src, size_t len, mbstate_t *__restrict ps);
