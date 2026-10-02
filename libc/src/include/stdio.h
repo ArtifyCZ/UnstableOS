@@ -144,4 +144,6 @@ int renameat(int oldfd, const char *old, int newfd, const char *new);
 ssize_t getdelim(char **__restrict lineptr, size_t *__restrict n, int delimiter, FILE *__restrict stream);
 ssize_t getline(char **__restrict lineptr, size_t *__restrict n, FILE *__restrict stream);
 
+// GNU extension
+int fpurge(FILE *stream);
 #endif
