@@ -3,6 +3,8 @@
 #include <stdint.h>
 #define FLT_EXP_MASK 0xFF
 #define DBL_EXP_MASK 0x7FF
+#define LDBL_EXP_MASK 0x7FFF
+
 int __fpclassify_f(float f) {
     union {float f; uint32_t i;} u = {.f = f};
     unsigned int exp = u.i >> (FLT_MANT_DIG - 1) & FLT_EXP_MASK;
@@ -34,6 +36,6 @@ int __fpclassify_ld(long double f) {
 
     if (u.e == 0 && !msb)    return u.m ? FP_SUBNORMAL : FP_ZERO;
     if (!msb)                return FP_NAN; // invalid encoding
-    if (u.e == DBL_EXP_MASK) return u.m ? FP_NAN : FP_INFINITE;
+    if (u.e == LDBL_EXP_MASK)return u.m ? FP_NAN : FP_INFINITE;
     return FP_NORMAL;
 }

@@ -1,7 +1,9 @@
 #include <math.h>
 // TODO: instead of these libgcc "stubs", implement the functions themselves to acquire the "coolness" factor
 // a problem for future me <3
-
+// also, turns out I was just lucky the first few tries and actually most of these functions call the libc ones
+// which means each of these is basically a guaranteed segfault :p
+// ... I feel like the future me is going to be here very soon
 double acos(double x) {
     return __builtin_acos(x);
 }
@@ -378,16 +380,6 @@ long lroundf(float x) {
 }
 long lroundl(long double x) {
     return __builtin_lroundl(x);
-}
-
-double modf(double x, double * iptr) {
-    return __builtin_modf(x, iptr);
-}
-float modff(float value, float * iptr) {
-    return __builtin_modff(value, iptr);
-}
-long double modfl(long double value, long double * iptr) {
-    return __builtin_modfl(value, iptr);
 }
 
 double nan(const char * tagp) {

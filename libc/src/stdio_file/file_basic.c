@@ -14,6 +14,7 @@
 FILE * stdin = NULL;
 FILE * stdout = NULL;
 FILE * stderr = NULL;
+extern char is_klibc;
 
 #define UNLINK_DOUBLE_LINKED_LIST(item, list) do {  \
     if ((item)->next != NULL)                       \
@@ -133,6 +134,10 @@ static FILE * fdopen_parsed(int fildes, int flags) {
     if (flags & O_APPEND)
         fcntl(fildes, F_SETFL, O_APPEND);
 
+    // we don't need the __files list in the kernel at all
+    if (is_klibc)
+        return new_file;
+
     pthread_mutex_lock(&__files_lock);
     APPEND_DOUBLE_LINKED_LIST(new_file, __files);
     pthread_mutex_unlock(&__files_lock);
@@ -193,6 +198,10 @@ FILE * fmemopen(void *restrict buf, size_t max_size, const char *restrict mode) 
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&new_file->mutex, &attr);
     pthread_mutexattr_destroy(&attr);
+
+    // we don't need the __files list in the kernel at all
+    if (is_klibc)
+        return new_file;
 
     pthread_mutex_lock(&__files_lock);
     APPEND_DOUBLE_LINKED_LIST(new_file, __files);
@@ -328,7 +337,8 @@ int fclose(FILE *stream) {
     if (!stream->pure_buf)
         close(stream->fd);
     pthread_mutex_destroy(&stream->mutex);
-    UNLINK_DOUBLE_LINKED_LIST(stream, __files);
+    if (!is_klibc)
+        UNLINK_DOUBLE_LINKED_LIST(stream, __files);
     free(stream);
     pthread_mutex_unlock(&__files_lock);
 

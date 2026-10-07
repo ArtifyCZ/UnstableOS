@@ -182,6 +182,7 @@ int fputc(int c, FILE *stream) {
                 goto unlock;
             }
             stream->buf.buf[stream->current_offset++] = ch;
+            ret = ch;
             goto unlock;
         }
         switch (write(stream->fd, &ch, 1)) {
