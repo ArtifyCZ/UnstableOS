@@ -26,6 +26,7 @@ SYSROOT        := $(MAKE_ROOT)/sysroot
 endif
 
 LIBC_CFLAGS := $(CFLAGS) -ffreestanding -nostdlib -nodefaultlibs -std=gnu99 -I$(LIBC_ROOT)/src/include -MMD -MP -fPIC -Wno-prio-ctor-dtor
+LIBM_CFLAGS := $(CFLAGS) -std=gnu99 -I$(LIBC_ROOT)/src/include -MMD -MP -fPIC -Wno-prio-ctor-dtor
 
 ifeq ($(DEBUG), 1)
 	LIBC_CFLAGS += -Og -g
@@ -91,7 +92,7 @@ $(LIBC_SO_LIB): $(LIBC_OBJS)
 $(LIBM_SO_LIB): $(LIBC_SO_LIB) $(LIBM_OBJS)
 	@$(PROGRESS_LABEL) Linking $(patsubst $(MAKE_ROOT)/%,%,$(abspath $@))
 	@mkdir -p $(dir $@)
-	@$(CC) -fPIC -nostdlib -shared $^ -o $@ -lgcc -L$(LIBC_BUILD_DIR) -lc
+	@$(CC) -fPIC -shared $(LIBM_OBJS) -o $@ -lgcc -L$(LIBC_BUILD_DIR)
 
 $(LIBC_BUILD_DIR)/%.c.o: $(LIBC_ROOT)/%.c
 	@$(PROGRESS_LABEL) Compiling $(patsubst $(MAKE_ROOT)/%,%,$(abspath $@))
@@ -102,6 +103,16 @@ $(LIBC_BUILD_DIR)/%.s.o: $(LIBC_ROOT)/%.s
 	@$(PROGRESS_LABEL) Assembling $(patsubst $(MAKE_ROOT)/%,%,$(abspath $@))
 	@mkdir -p $(dir $@)
 	@$(CC) $(LIBC_CFLAGS) -c $< -o $@
+
+$(LIBM_BUILD_DIR)/%.c.o: $(LIBM_ROOT)/%.c
+	@$(PROGRESS_LABEL) Compiling $(patsubst $(MAKE_ROOT)/%,%,$(abspath $@))
+	@mkdir -p $(dir $@)
+	@$(CC) $(LIBM_CFLAGS) -c $< -o $@
+
+$(LIBM_BUILD_DIR)/%.s.o: $(LIBM_ROOT)/%.s
+	@$(PROGRESS_LABEL) Assembling $(patsubst $(MAKE_ROOT)/%,%,$(abspath $@))
+	@mkdir -p $(dir $@)
+	@$(CC) $(LIBM_CFLAGS) -c $< -o $@
 
 clean::
 	@$(MAKE) -C $(LIBC_ROOT)/rtld clean

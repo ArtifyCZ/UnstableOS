@@ -80,16 +80,6 @@ long double cbrtl(long double x) {
     return __builtin_cbrtl(x);
 }
 
-double ceil(double x) {
-    return __builtin_ceil(x);
-}
-float ceilf(float x) {
-    return __builtin_ceilf(x);
-}
-long double ceill(long double x) {
-    return __builtin_ceill(x);
-}
-
 double copysign(double x, double y) {
     return __builtin_copysign(x, y);
 }
@@ -184,16 +174,6 @@ float fdimf(float x, float y) {
 }
 long double fdiml(long double x, long double y) {
     return __builtin_fdiml(x, y);
-}
-
-double floor(double x) {
-    return __builtin_floor(x);
-}
-float floorf(float x) {
-    return __builtin_floorf(x);
-}
-long double floorl(long double x) {
-    return __builtin_floorl(x);
 }
 
 double fma(double x, double y, double z) {
@@ -297,23 +277,68 @@ long double lgammal(long double x) {
 }
 
 long long llrint(double x) {
-    return __builtin_llrint(x);
+    return (long long)nearbyint(x);
 }
 long long llrintf(float x) {
-    return __builtin_llrintf(x);
+    return (long long)nearbyintf(x);
 }
 long long llrintl(long double x) {
-    return __builtin_llrintl(x);
+    return (long long)nearbyintl(x);
 }
 
 long long llround(double x) {
-    return __builtin_llround(x);
+    unsigned short old_fldcw = 0;
+    unsigned short new_fldcw = 0x67F; // nearest, all exceptions masked
+    asm volatile (
+        "fstcw %0"
+        : "=m"(old_fldcw)
+    );
+    asm volatile (
+        "fldcw %0"
+        :: "m"(new_fldcw)
+    );
+    long long ret = llrint(x);
+    asm volatile (
+        "fldcw %0"
+        :: "m"(old_fldcw)
+    );
+    return ret;
 }
 long long llroundf(float x) {
-    return __builtin_llroundf(x);
+    unsigned short old_fldcw = 0;
+    unsigned short new_fldcw = 0x67F; // nearest, all exceptions masked
+    asm volatile (
+        "fstcw %0"
+        : "=m"(old_fldcw)
+    );
+    asm volatile (
+        "fldcw %0"
+        :: "m"(new_fldcw)
+    );
+    long long ret = llrintf(x);
+    asm volatile (
+        "fldcw %0"
+        :: "m"(old_fldcw)
+    );
+    return ret;
 }
 long long llroundl(long double x) {
-    return __builtin_llroundl(x);
+    unsigned short old_fldcw = 0;
+    unsigned short new_fldcw = 0x67F; // nearest, all exceptions masked
+    asm volatile (
+        "fstcw %0"
+        : "=m"(old_fldcw)
+    );
+    asm volatile (
+        "fldcw %0"
+        :: "m"(new_fldcw)
+    );
+    long long ret = llrintl(x);
+    asm volatile (
+        "fldcw %0"
+        :: "m"(old_fldcw)
+    );
+    return ret;
 }
 
 double log(double x) {
@@ -363,13 +388,13 @@ long double logl(long double x) {
 }
 
 long lrint(double x) {
-    return __builtin_lrint(x);
+    return (long)llrint(x);
 }
 long lrintf(float x) {
-    return __builtin_lrintf(x);
+    return (long)llrintf(x);
 }
 long lrintl(long double x) {
-    return __builtin_lrintl(x);
+    return (long)llrintl(x);
 }
 
 long lround(double x) {
@@ -390,16 +415,6 @@ float nanf(const char * tagp) {
 }
 long double nanl(const char * tagp) {
     return __builtin_nanl(tagp);
-}
-
-double nearbyint(double x) {
-    return __builtin_nearbyint(x);
-}
-float nearbyintf(float x) {
-    return __builtin_nearbyintf(x);
-}
-long double nearbyintl(long double x) {
-    return __builtin_nearbyintl(x);
 }
 
 double nextafter(double x, double y) {
@@ -548,17 +563,6 @@ float tgammaf(float x) {
 long double tgammal(long double x) {
     return __builtin_tgammal(x);
 }
-
-double trunc(double x) {
-    return __builtin_trunc(x);
-}
-float truncf(float x) {
-    return __builtin_truncf(x);
-}
-long double truncl(long double x) {
-    return __builtin_truncl(x);
-}
-
 double y0(double x) {
     return __builtin_y0(x);
 }
