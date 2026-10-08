@@ -34,13 +34,17 @@ int main(int argc, char ** argv) {
     if (getpid() == 1) {
         // stuff like setsid() in combination with our wait() in ysh means that if we're the init
         // we'll be waiting on everything setsided
+        relaunch:
         switch (fork()) {
             case -1:
             case  0:
                 break;
             default:
+                signal(SIGQUIT, SIG_IGN);
                 while (!(wait(&(int){0}) == -1 && errno == ECHILD)) {}
-                exit(0);
+                printf("\n!!! ysh: Warning: tried to exit init shell, relaunching\n");
+                signal(SIGQUIT, SIG_DFL);
+                goto relaunch;
         }
     }
     printf("\n\nArguments:\n");
@@ -141,6 +145,11 @@ int main(int argc, char ** argv) {
 
                         if (pipe_fds[1] != -1)
                             dup2(pipe_fds[1], STDOUT_FILENO);
+
+                        signal(SIGINT,  SIG_DFL);
+                        signal(SIGTSTP, SIG_DFL);
+                        signal(SIGTTOU, SIG_DFL);
+                        signal(SIGTTIN, SIG_DFL);
 
                         execvp(argvs[arg_idx][0], argvs[arg_idx]);
                         printf("ysh: %s: %s\n", argvs[arg_idx][0], strerror(errno));
