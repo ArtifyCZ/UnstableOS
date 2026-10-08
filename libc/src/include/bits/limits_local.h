@@ -45,4 +45,5 @@
 // runtime increasable values
 #define NGROUPS_MAX 16
 
+#define NL_ARGMAX 256
 #endif

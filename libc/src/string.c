@@ -69,12 +69,29 @@ static inline char get_nibble(char value) {
     else return '0' + value;
 }
 
-void itoax(uint32_t num, char * out) {
+void itoax(uint64_t num, char * out) {
     char temp;
     int ctr = 0;
     for (; ; ctr++) {
         out[ctr] = get_nibble(num % 16);
         num /= 16;
+        if (num == 0) break;
+    }
+
+    for (int i = 0; i <= ctr/2; i++) {
+        temp = out[i];
+        out[i] = out[ctr-i];
+        out[ctr-i] = temp;
+    }
+    out[ctr+1] = '\0';
+}
+
+void itoao(uint32_t num, char * out) {
+    char temp;
+    int ctr = 0;
+    for (; ; ctr++) {
+        out[ctr] = '0' + num % 8;
+        num /= 8;
         if (num == 0) break;
     }
 
@@ -102,13 +119,6 @@ void itoax(uint32_t num, char * out) {
 //    }
 //    out[ctr+1] = 0;
 //}
-
-void i64toax(uint64_t i, char * out) {
-    for (int j = 0; j < 16; j++) {
-        out[15-j] = get_nibble((i>>(j*4))&0xF);
-    }
-}
-
 
 size_t strlen(const char * s) {
     const char * end = s;

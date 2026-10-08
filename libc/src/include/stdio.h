@@ -5,7 +5,14 @@
 #include <stdarg.h>
 #include "sys/types.h"
 
-#define PRINTF_MAX_FORMAT_OUT 128
+// this huge number is mainly for floats, and not even those fit properly
+// if you look into float.h, you can see that long doubles can be up to 1x10^4932 large
+// that's 4932 CHARACTERS
+// since that's hardly the case, I decided to instead only allow max doubles (1x10^308)
+// and fall back to engineering format if >1x10^400, which should be just about good enough
+#define __PRINTF_MAX_FORMAT_OUT 512
+#define __PRINTF_MAX_FLOAT 1e400L
+#define __PRINTF_MAX_PREC 96 // to provide more than enough leeway for other output to fit into the 256 chars
 
 #define EOF (-1)
 

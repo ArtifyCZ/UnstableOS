@@ -6,8 +6,8 @@
 void itoad (uint64_t num, char * out); // signed int
 void itoaud(uint64_t num, char * out); // unsigned int
 
-void itoax(uint32_t num, char * out);
-void i64toax(uint64_t i, char * out);
+void itoax(uint64_t num, char * out);
+void itoao(uint32_t num, char * out);
 
 void * memchr(const void *s, int c, size_t n);
 void * memmem(const void *haystack, size_t haystacklen, const void *needle, size_t needlelen);

@@ -57,8 +57,7 @@ long double modfl(long double x, long double * iptr) {
     // the mantissa has no bits representing a whole number
     if (exp < 0) {
         // save the sign
-        u.e &= 0x8000;
-        *iptr = u.f;
+        *iptr = u.e & 0x8000 ? -0.0L : 0.0L;
         return x;
     }
 
@@ -66,9 +65,7 @@ long double modfl(long double x, long double * iptr) {
     if (exp >= LDBL_MANT_DIG - 1) {
         nofrac:
         *iptr = x;
-        // save the sign
-        u.e &= 0x8000;
-        return u.f;
+        return u.e & 0x8000 ? -0.0L : 0.0L;
     }
 
     // parts to the left correspond to whole numbers

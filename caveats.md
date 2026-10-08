@@ -14,7 +14,8 @@
 - `PARMRK` termios option may lead to wrong \t deletion on `ICANON` (\xFF\x00<c> is treated as 3 characters)
 ### Known missing features
 ---
-- `scanf()` and `printf()` family of functions don't implement floats
+- `scanf()` family of functions don't implement floats
+- `printf()` family of functions don't support the `'` flag and the `%a`/`%A` format specifiers
 - everything in the TODO obviously
 - missing `sigaltstack()` and everything along with it
 - missing almost all `si_code` values for `siginfo_t`
