@@ -81,6 +81,7 @@ memcpy:
 
     pop %esi
     pop %edi
+    mov 0x08(%ebp), %eax
     pop %ebp
     ret
 
