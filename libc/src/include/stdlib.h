@@ -20,6 +20,8 @@ void __attribute__((noreturn)) exit(long exit_code);
 void __attribute__((noreturn)) _Exit(long exit_code);
 void __attribute__((noreturn)) abort();
 
+int system(const char *command);
+
 //void malloc_prepare(void * heap_struct_start, void * heap_top);
 
 #pragma clang diagnostic ignored "-Wignored-attributes" // clang doesn't yet support malloc(x) attribute syntax
@@ -42,7 +44,10 @@ unsigned      long strtoul (const char * __restrict start, char ** __restrict en
          long long strtoll (const char * __restrict start, char ** __restrict end_out, int base);
               long strtol  (const char * __restrict start, char ** __restrict end_out, int base);
 float  strtof(const char *__restrict nptr, char **__restrict endptr);
+
+// in strtod.c
 double strtod(const char *__restrict nptr, char **__restrict endptr);
+double atof(const char *str);
 
 
 char * getenv(const char * name);

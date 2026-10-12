@@ -57,6 +57,8 @@ struct FILE {
     unsigned char was_error : 1;
 
 
+    pid_t popen_pid; // used in popen to close files and in pclose for waitpid
+
     struct FILE * next, * prev; // for fclosing everything on exit
 } typedef FILE;
 
@@ -116,6 +118,9 @@ int getc_unlocked(FILE *stream);
 int getchar_unlocked();
 int putc_unlocked(int c, FILE *stream);
 int putchar_unlocked(int c);
+
+FILE *popen(const char *command, const char *mode);
+int pclose(FILE *stream);
 
 #define _IONBF 0
 #define _IOLBF 1

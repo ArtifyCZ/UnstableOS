@@ -211,3 +211,12 @@ double strtod(const char *restrict nptr, char **restrict endptr)
 float strtof(const char *restrict nptr, char **restrict endptr) {
 	return (float)strtod(nptr, endptr);
 }
+
+#include <errno.h>
+
+double atof(const char *str) {
+	int old_errno = ___get_errno();
+	double ret = strtod(str, NULL);
+	___set_errno(old_errno);
+	return ret;
+}

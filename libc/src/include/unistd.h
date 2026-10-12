@@ -148,4 +148,7 @@ int ttyname_r(int fildes, char *name, size_t namesize);
 
 int gethostname(char *name, size_t namelen);
 int sethostname(const char *name, size_t namelen);
+
+char *getlogin(void);
+int getlogin_r(char *name, size_t namesize);
 #endif
