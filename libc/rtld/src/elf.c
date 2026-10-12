@@ -58,6 +58,8 @@ struct dso * loadelf(int fd) {
 
     dso->_start = last_page + ehdr.program_entry_offset;
 
+    dso->dvtid = dvt_idx; // it's possible that the executable has no TLS section and yet wants a TLS relocation
+
     struct program_header PH;
 
     for (int i = 0; i < ehdr.program_header_entry_count; i++) {

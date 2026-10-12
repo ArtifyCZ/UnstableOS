@@ -299,8 +299,7 @@ pid_t sys_fork(__gregcontext_t * ctx) {
     new_thread->sa_to_be_handled = 0; // to be sure, sa_mask is retained
 
     new_thread->tid = __atomic_add_fetch(&last_tid, 1, __ATOMIC_RELAXED);
-    new_thread->tcb->tid = new_thread->tid;
-
+    // tcb assignment lower down
     new_thread->next = NULL;
     new_thread->prev = new_thread;
     new_thread->in_critical_section = 0;
@@ -330,6 +329,12 @@ pid_t sys_fork(__gregcontext_t * ctx) {
 
     new_proc->address_space_paddr = pd;
     new_thread->cr3_state = pd;
+
+    void * old_as = paging_get_address_space_paddr();
+    paging_apply_address_space(new_proc->address_space_paddr);
+    new_thread->tcb->self = new_thread->tcb; // just in case
+    new_thread->tcb->tid = new_thread->tid;
+    paging_apply_address_space(old_as);
 
     new_proc->after_exec = 0;
 
