@@ -602,8 +602,8 @@ void signal_dispatch_sa(process_t * group, thread_t * thread) {
     sss->info   = &sss->__info;
     sss->sig    = thread->sa_to_be_handled;
 
-    thread->context.iret_frame.sp -= sizeof(struct signal_stack_state);
-    thread->context.iret_frame.ip  =
+    thread->context.iret_frame.sp = sss;
+    thread->context.iret_frame.ip =
         group->sa_handlers[thread->sa_to_be_handled - 1].sa_handler;
 
     if (group->sa_handlers[thread->sa_to_be_handled - 1].sa_flags & SA_RESETHAND)
@@ -655,7 +655,7 @@ void sys_sigreturn(__gregcontext_t * ctx) {
         return;
     }
 
-    if ((uintptr_t)ctx->iret_frame.sp & 0xF) {
+    if (((uintptr_t)ctx->iret_frame.sp - sizeof(void*)) & 0xF) {
         kprintf("Warning: PID %ld TID %ld Unaligned ESP on signal return - can't restore FPU state!\n", current_process->pid, current_thread->tid);
     }
 
