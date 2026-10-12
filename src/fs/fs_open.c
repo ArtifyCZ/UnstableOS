@@ -68,24 +68,13 @@ int open_raw_device_fd(dev_t device, unsigned short flags) {
     return fd;
 }
 
-static char check_page(const char * addr) {
-    if ((PAGE_DIRECTORY_TYPE*)addr >= PTE_ADDR_VIRT_BASE) return 0; // colliding with page tables
-
-    PAGE_TABLE_TYPE * pte = paging_get_pte(addr);
-    if (pte == NULL) return 0;
-    if (*pte == 0) return 0; // not present
-    if (current_process->pid != 0 && !(*pte & PTE_PDE_PAGE_USER_ACCESS)) return 0; // userspace doesn't have access
-
-    return 1;
-}
-
 char * secure_strdup(const char * path, size_t max_len, size_t *len_out) {
     if (path == NULL) return NULL;
 
     VM_LOCK(path);
     size_t path_len;
     for (path_len = 0; path_len < max_len; path_len++) {
-        if (!check_page(path + path_len)) goto error;
+        if (!paging_check_address_range(path + path_len, 1, 0, current_process->pid == 0)) goto error;
         if (path[path_len] == '\0') break;
     }
     if (path_len == 0) goto error;
