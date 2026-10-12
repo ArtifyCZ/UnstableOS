@@ -22,6 +22,10 @@
 #define FOPEN_MAX 0xFFFFFFFF // no limit
 #define FILENAME_MAX 4096 // from limits_local.h
 
+#define L_tmpnam 11
+#define P_tmpdir "/tmp"
+#define TMP_MAX 10000 // probably more but couldn't be bothered calculating it
+
 struct FILE {
     int fd;
     pthread_mutex_t mutex;
@@ -150,6 +154,10 @@ int renameat(int oldfd, const char *old, int newfd, const char *new);
 
 ssize_t getdelim(char **__restrict lineptr, size_t *__restrict n, int delimiter, FILE *__restrict stream);
 ssize_t getline(char **__restrict lineptr, size_t *__restrict n, FILE *__restrict stream);
+
+char *tmpnam(char *s);
+char *tempnam(const char *dir, const char *pfx);
+FILE *tmpfile();
 
 // GNU extension
 int fpurge(FILE *stream);

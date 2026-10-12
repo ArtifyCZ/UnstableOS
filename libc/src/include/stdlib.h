@@ -62,4 +62,9 @@ int mblen(const char *s, size_t n);
 
 size_t wcstombs(char *__restrict s, const wchar_t *__restrict pwcs, size_t n);
 int wctomb(char *s, wchar_t wchar);
+
+char *mktemp(char *s);
+char *mkdtemp(char *template);
+int mkostemp(char *template, int flag);
+int mkstemp(char *template);
 #endif

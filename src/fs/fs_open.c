@@ -388,7 +388,7 @@ int openat_inode(inode_t * base, const char * path, unsigned int flags, mode_t m
         }
         // has to be below because we prefer returning ENOENT
         // devices are not governed by the mountpoint options
-        if (last_fragment && (S_ISREG(new->mode) || S_ISDIR(new->mode))) {
+        if (last_fragment && S_ISREG(new->mode)) {
             if ((sb->mount_options & MOUNT_RDONLY ||
                 sb->funcs->pwrite == NULL)
                     && flags & O_WRONLY) {
