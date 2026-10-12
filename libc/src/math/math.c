@@ -90,12 +90,6 @@ long double copysignl(long double x, long double y) {
     return __builtin_copysignl(x, y);
 }
 
-double cos(double x) {
-    return __builtin_cos(x);
-}
-float cosf(float x) {
-    return __builtin_cosf(x);
-}
 double cosh(double x) {
     return __builtin_cosh(x);
 }
@@ -104,9 +98,6 @@ float coshf(float x) {
 }
 long double coshl(long double x) {
     return __builtin_coshl(x);
-}
-long double cosl(long double x) {
-    return __builtin_cosl(x);
 }
 
 double erf(double x) {
@@ -506,12 +497,6 @@ long double scalbnl(long double x, int n) {
     return __builtin_scalbnl(x, n);
 }
 
-double sin(double x) {
-    return __builtin_sin(x);
-}
-float sinf(float x) {
-    return __builtin_sinf(x);
-}
 double sinh(double x) {
     return __builtin_sinh(x);
 }
@@ -520,9 +505,6 @@ float sinhf(float x) {
 }
 long double sinhl(long double x) {
     return __builtin_sinhl(x);
-}
-long double sinl(long double x) {
-    return __builtin_sinl(x);
 }
 
 double sqrt(double x) {

@@ -323,4 +323,9 @@ long double truncl(long double x);
 double      y0(double x);
 double      y1(double x);
 double      yn(int n, double x);
+
+
+void sincos(double x, double *sin, double *cos);
+void sincosf(float x, float *sin, float *cos);
+void sincosl(long double x, long double *sin, long double *cos);
 #endif
