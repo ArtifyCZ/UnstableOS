@@ -1,0 +1,34 @@
+--- a/rlmbutil.h	2026-10-12 02:29:02.228398123 +0200
++++ b/rlmbutil.h	2026-10-12 02:29:17.540667307 +0200
+@@ -31,7 +31,7 @@
+ /* For platforms which support the ISO C amendment 1 functionality we
+    support user defined character classes.  */
+    /* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.  */
+-#if defined (HAVE_WCTYPE_H) && defined (HAVE_WCHAR_H) && defined (HAVE_LOCALE_H)
++#if defined (HAVE_WCTYPE_H) && defined (HAVE_WCHAR_H)
+ #  include <wchar.h>
+ #  include <wctype.h>
+ #  if defined (HAVE_ISWCTYPE) && \
+--- a/support/config.sub	2026-10-12 02:20:57.014160044 +0200
++++ b/support/config.sub	2026-10-12 02:21:36.435039393 +0200
+@@ -1965,6 +1965,7 @@
+ 	# Now accept the basic system types.
+ 	# Each alternative MUST end in a * to match a version number.
+ 	  abug \
++    | unstableos* \
+ 	| aix* \
+ 	| amdhsa* \
+ 	| amigados* \
+--- a/histsearch.c	2026-10-12 02:36:06.594867460 +0200
++++ b/histsearch.c	2026-10-12 02:36:29.146411672 +0200
+@@ -49,6 +49,10 @@
+ 
+ #include "rlmbutil.h"
+ 
++// I have no clue where readline expects its strncasecmp or if I'm doing something wrong
++// however according to POSIX it's strings.h
++#include <strings.h> 
++
+ /* The list of alternate characters that can delimit a history search
+    string. */
+ char *history_search_delimiter_chars = (char *)NULL;

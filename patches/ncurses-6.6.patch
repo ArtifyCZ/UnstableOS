@@ -1,0 +1,22 @@
+--- ncurses-6.6_/configure	2026-10-12 02:45:50.973162033 +0200
++++ ncurses-6.6/configure	2026-10-12 02:50:42.949125545 +0200
+@@ -7123,7 +7123,7 @@
+ 		fi
+ 		cf_cv_rm_so_locs=yes
+ 		;;
+-	(linux*|gnu*|k*bsd*-gnu)
++	(linux*|gnu*|k*bsd*-gnu|unstableos*)
+ 		if test "$DFT_LWR_MODEL" = "shared" && test -n "$LD_RPATH_OPT" ; then
+ 			LOCAL_LDFLAGS="${LD_RPATH_OPT}\$(LOCAL_LIBDIR)"
+ 			LOCAL_LDFLAGS2="$LOCAL_LDFLAGS"
+--- ncurses-6.6_/config.sub	2026-10-12 02:45:52.246522879 +0200
++++ ncurses-6.6/config.sub	2026-10-12 02:46:43.965973920 +0200
+@@ -1970,7 +1970,8 @@
+ 	# Now accept the basic system types.
+ 	# Each alternative MUST end in a * to match a version number.
+ 	  abug \
++	| unstableos* \
+	| aix* \
+ 	| amdhsa* \
+ 	| amigados* \
+ 	| amigaos* \
