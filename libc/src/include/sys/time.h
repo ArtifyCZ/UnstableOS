@@ -6,4 +6,5 @@ struct timeval {
     suseconds_t tv_usec;
 };
 
+int gettimeofday(struct timeval *__restrict tp, void *__restrict tzp);
 #endif
