@@ -111,7 +111,7 @@ size_t mbsnrtowcs(wchar_t *restrict dst, const char **restrict src, size_t nmc, 
         ps = &internal;
 
     size_t i = 0;
-    for (; i < len && s - *src < nmc; i++) {
+    for (; (!dst || i < len) && s - *src < nmc; i++) {
         size_t to_read = nmc - (s - *src);
         to_read = to_read < MB_CUR_MAX ? to_read : MB_CUR_MAX;
         wchar_t wc;
