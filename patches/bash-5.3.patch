@@ -1,0 +1,42 @@
+--- bash-5.3_/include/timer.h	2026-10-13 02:13:09.957857726 +0200
++++ bash-5.3/include/timer.h	2026-10-13 02:16:25.885172597 +0200
+@@ -23,6 +23,7 @@
+ #endif
+ 
+ #include "bashjmp.h"
++#include <sys/time.h> // no clue where bash expects its timeval
+ typedef struct _shtimer
+ {
+   struct timeval tmout;
+--- bash-5.3_/lib/sh/random.c	2026-10-13 02:13:13.199799929 +0200
++++ bash-5.3/lib/sh/random.c	2026-10-13 02:19:01.294555295 +0200
+@@ -18,6 +18,7 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#include <sys/time.h>
+ #include "config.h"
+ 
+ #include "bashtypes.h"
+--- bash-5.3_/config-bot.h	2026-10-13 02:13:12.518957678 +0200
++++ bash-5.3/config-bot.h	2026-10-13 02:20:29.169194100 +0200
+@@ -133,7 +133,7 @@
+ /* For platforms which support the ISO C amendment 1 functionality we
+    support user defined character classes.  */
+ /* Solaris 2.5 has a bug: <wchar.h> must be included before <wctype.h>.  */
+-#if defined (HAVE_WCTYPE_H) && defined (HAVE_WCHAR_H) && defined (HAVE_LOCALE_H)
++#if defined (HAVE_WCTYPE_H) && defined (HAVE_WCHAR_H)
+ #  include <wchar.h>
+ #  include <wctype.h>
+ #  if defined (HAVE_ISWCTYPE) && \
+--- bash-5.3_/lib/sh/netopen.c	2026-10-13 02:13:13.190632043 +0200
++++ bash-5.3/lib/sh/netopen.c	2026-10-13 02:22:52.871337040 +0200
+@@ -23,6 +23,8 @@
+    along with Bash.  If not, see <http://www.gnu.org/licenses/>.
+ */
+ 
++#include "error.h"
++#include "bashintl.h"
+ #include <config.h>
+ 
+ #if defined (HAVE_NETWORK)
